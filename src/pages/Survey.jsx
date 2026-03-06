@@ -262,7 +262,7 @@ const RATING_LABELS = ["Very different", "Mostly different", "Somewhat similar",
 
 // ─── Privacy Notice ───────────────────────────────────────────────────────────
 
-function PrivacyNotice({ onAccept, alreadyCompleted }) {}
+function PrivacyNotice({ onAccept, alreadyCompleted }) {
   return (
     <div style={S.card}>
       <span style={S.label}>Before you begin</span>
