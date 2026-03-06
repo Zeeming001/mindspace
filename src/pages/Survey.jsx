@@ -262,13 +262,30 @@ const RATING_LABELS = ["Very different", "Mostly different", "Somewhat similar",
 
 // ─── Privacy Notice ───────────────────────────────────────────────────────────
 
-function PrivacyNotice({ onAccept }) {
+function PrivacyNotice({ onAccept, alreadyCompleted }) {}
   return (
     <div style={S.card}>
       <span style={S.label}>Before you begin</span>
       <h2 style={S.h2}>A note on your data</h2>
       <p style={S.p}>
         This survey collects your similarity ratings for pairs of abstract concepts.
+
+              {alreadyCompleted && (
+                      <div style={{
+                                background: "rgba(232,197,71,0.06)",
+                                          border: "1px solid #e8c54733",
+                                                    borderRadius: "4px",
+                                                              padding: "0.9rem 1.1rem",
+                                                                        marginBottom: "1.4rem",
+                                                                                  fontSize: "0.72rem",
+                                                                                            color: "#e8c547",
+                                                                                                      lineHeight: 1.7,
+                                                                                                              }}>
+                                                                                                                        It looks like you've completed a session from this browser before. Your
+                                                                                                                                  previous responses are already saved — continuing will add more pair ratings
+                                                                                                                                            to the same anonymous session rather than creating a duplicate record.
+                                                                                                                                                    </div>
+                                                                                                                                                          )}
         Your responses are stored anonymously — identified only by a randomly generated
         session ID, with no link to your name, email, or IP address.
       </p>
@@ -287,7 +304,7 @@ function PrivacyNotice({ onAccept }) {
       </p>
       <div style={S.btnRow}>
         <button style={S.btnPrimary} onClick={onAccept}>
-          I understand — begin →
+                    {alreadyCompleted ? "Continue rating \u2192" : "I understand \u2014 begin \u2192"}
         </button>
       </div>
     </div>
@@ -598,6 +615,34 @@ function Checkpoint({ ratings, totalPairs, onContinue, onDone }) {
   );
 }
 
+// ─── Persistent session helpers ───────────────────────────────────────────────
+// We store a stable session ID in localStorage so the same browser can't
+// submit unlimited duplicate surveys. On refresh the same session resumes;
+// only a localStorage clear or a different browser yields a new session.
+
+const LS_SESSION_KEY    = "mindspace_session_id";
+const LS_COMPLETED_KEY  = "mindspace_completed";
+
+function getOrCreateSessionId() {
+  try {
+      const stored = localStorage.getItem(LS_SESSION_KEY);
+          if (stored) return stored;
+              const fresh = uuidv4();
+                  localStorage.setItem(LS_SESSION_KEY, fresh);
+                      return fresh;
+                        } catch {
+                            return uuidv4(); // storage blocked (private mode etc.) — fall back gracefully
+                              }
+                              }
+
+                              function markSessionCompleted() {
+                                try { localStorage.setItem(LS_COMPLETED_KEY, "1"); } catch {}
+                                }
+
+                                function hasCompletedBefore() {
+                                  try { return !!localStorage.getItem(LS_COMPLETED_KEY); } catch { return false; }
+                                  }
+
 // ─── Main Survey Page ─────────────────────────────────────────────────────────
 
 export default function Survey() {
@@ -607,7 +652,8 @@ export default function Survey() {
   const [batchSize, setBatchSize]     = useState(FIRST_BATCH_SIZE);
   const [pairIdx, setPairIdx]         = useState(0);     // within current batch
   const [ratings, setRatings]         = useState([]);    // accumulated across all batches
-  const [sessionId]                   = useState(() => uuidv4());
+  const [sessionId]                   = useState(() => getOrCreateSessionId());
+  const [alreadyCompleted]            = useState(() => hasCompletedBefore());
   const [error, setError]             = useState(null);
 
   // ── Start: claim session, load all pairs ───────────────────────────────────
@@ -651,7 +697,8 @@ export default function Survey() {
       );
 
       if (batchStart === 0) {
-        // First batch done → go to demographics
+        markSessionCompleted();
+                  // First batch done → go to demographics
         setPhase(PHASE.DEMOGRAPHICS);
       } else {
         // Subsequent batch done → checkpoint
@@ -725,7 +772,7 @@ export default function Survey() {
       )}
 
       {phase === PHASE.PRIVACY && (
-        <PrivacyNotice onAccept={handleStart} />
+        <PrivacyNotice onAccept={handleStart} alreadyCompleted={alreadyCompleted} />
       )}
 
       {phase === PHASE.QUESTIONS && currentPair && (

@@ -176,6 +176,7 @@ Deno.serve(async (_req) => {
     { key: "religion:None",      field: "religion", values: ["None"] },
     { key: "religion:Muslim",    field: "religion", values: ["Muslim"] },
     { key: "religion:Jewish",    field: "religion", values: ["Jewish"] },
+        { key: "religion:Other", field: "religion", values: ["Hindu", "Buddhist", "Other"] },
   ];
 
   // ── Process each group ────────────────────────────────────────────────

@@ -113,4 +113,5 @@ export const GROUPS = [
   { id: "religion:None",       label: "Non-religious",      field: "religion",  value: "None" },
   { id: "religion:Muslim",     label: "Muslim",             field: "religion",  value: "Muslim" },
   { id: "religion:Jewish",     label: "Jewish",             field: "religion",  value: "Jewish" },
+    { id: "religion:Other",   label: "Other / Hindu / Buddhist", field: "religion", value: ["Hindu", "Buddhist", "Other"] },
 ];
