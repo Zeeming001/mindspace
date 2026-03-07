@@ -258,7 +258,7 @@ const S = {
   },
 };
 
-const RATING_LABELS = ["Very different", "Mostly different", "Somewhat similar", "Mostly similar", "Nearly identical"];
+const RATING_LABELS = ["Very unlikely", "Unlikely", "Possible", "Likely", "Very likely"];
 
 // ─── Privacy Notice ───────────────────────────────────────────────────────────
 
@@ -268,7 +268,7 @@ function PrivacyNotice({ onAccept, alreadyCompleted }) {
       <span style={S.label}>Before you begin</span>
       <h2 style={S.h2}>A note on your data</h2>
       <p style={S.p}>
-        This survey collects your similarity ratings for pairs of abstract concepts.
+        This survey collects your ratings for pairs of personal descriptions.
 
               {alreadyCompleted && (
                       <div style={{
@@ -354,7 +354,7 @@ function SurveyQuestion({ pair, onRate, ratedInBatch, batchSize, totalRated, tot
         textAlign: "center",
         marginBottom: "2rem",
       }}>
-        How similar are these concepts in your mind?
+        If someone fits one of these descriptions, how likely are they to fit the other?
       </div>
 
       <div style={S.conceptPair}>
