@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { GROUPS } from "../lib/concepts";
 import { fetchGroupPositions, fetchGroupCounts, MIN_RESPONDENTS } from "../lib/supabase";
+import { SAMPLE_POSITIONS } from "../lib/samplePositions";
 import MDSPlot from "../components/MDSPlot";
 
 const S = {
@@ -61,6 +62,21 @@ const S = {
     borderRadius: "6px",
     padding: "1rem",
     overflowX: "auto",
+  },
+  // Banner shown when rendering simulated data
+  simulatedBanner: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.7rem",
+    background: "rgba(184,136,10,0.05)",
+    border: "1px solid rgba(184,136,10,0.22)",
+    borderRadius: "4px",
+    padding: "0.65rem 1rem",
+    marginBottom: "0.75rem",
+    fontSize: "0.65rem",
+    color: "#b8880a",
+    letterSpacing: "0.04em",
+    lineHeight: 1.6,
   },
   meta: {
     display: "flex",
@@ -152,9 +168,15 @@ export default function Explore() {
       .finally(() => setLoading(false));
   }, [selectedGroupId]);
 
-  const selectedGroup = GROUPS.find(g => g.id === selectedGroupId);
-  const nResponses = counts[selectedGroupId] ?? null;
-  const hasEnoughData = nResponses === null || nResponses >= MIN_RESPONDENTS;
+  const selectedGroup  = GROUPS.find(g => g.id === selectedGroupId);
+  const nResponses     = counts[selectedGroupId] ?? null;
+  const hasRealData    = nResponses !== null && nResponses >= MIN_RESPONDENTS;
+
+  // Show simulated positions when: "all" group is selected and not enough real data yet.
+  // For demographic sub-groups (political, religious) we still show "not enough data" —
+  // the sample is only a useful stand-in for the aggregate "all respondents" view.
+  const showSample     = !hasRealData && selectedGroupId === "all";
+  const displayPositions = hasRealData ? positions : (showSample ? SAMPLE_POSITIONS : null);
 
   return (
     <div style={S.page}>
@@ -192,19 +214,36 @@ export default function Explore() {
           <div style={{ ...S.warning, color: "#d47e7e", borderColor: "#d47e7e22" }}>
             Could not load data: {error}
           </div>
-        ) : !hasEnoughData ? (
+        ) : !hasRealData && !showSample ? (
+          // Demographic sub-group: not enough data, no fallback
           <div style={S.warning}>
-            Not enough data yet for this group (minimum {MIN_RESPONDENTS} respondents required,
-            currently {nResponses}). Take the survey to contribute.
+            Not enough data yet for this group (minimum {MIN_RESPONDENTS} respondents required
+            {nResponses !== null ? `, currently ${nResponses}` : ""}). Take the survey to contribute.
           </div>
         ) : (
-          <MDSPlot
-            positions={positions}
-            loading={loading}
-            width={700}
-            height={520}
-            showLegend={true}
-          />
+          // Real data or sample fallback
+          <div>
+            {showSample && (
+              <div style={S.simulatedBanner}>
+                <span style={{ fontSize: "0.75rem" }}>⚠</span>
+                <span>
+                  <strong>Simulated data</strong> — this map is generated from a theoretical
+                  model, not real survey responses. It will be automatically replaced once{" "}
+                  {MIN_RESPONDENTS} respondents have contributed.
+                  {nResponses !== null && nResponses > 0 && (
+                    <> Currently {nResponses} of {MIN_RESPONDENTS} needed.</>
+                  )}
+                </span>
+              </div>
+            )}
+            <MDSPlot
+              positions={displayPositions}
+              loading={loading && !showSample}
+              width={700}
+              height={520}
+              showLegend={true}
+            />
+          </div>
         )}
       </div>
 
@@ -217,7 +256,7 @@ export default function Explore() {
             Respondents: <span style={S.metaValue}>{nResponses}</span>
           </span>
         )}
-        {computedAt && (
+        {hasRealData && computedAt && (
           <span style={S.metaItem}>
             Map computed: <span style={S.metaValue}>
               {new Date(computedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
@@ -227,12 +266,17 @@ export default function Explore() {
         <span style={S.metaItem}>
           Min. threshold: <span style={S.metaValue}>{MIN_RESPONDENTS} respondents</span>
         </span>
+        {showSample && (
+          <span style={{ ...S.metaItem, color: "#b8880a" }}>
+            Source: <span style={{ color: "#b8880a" }}>simulated</span>
+          </span>
+        )}
       </div>
 
       <div style={S.callout}>
-        Maps are recomputed hourly from all submitted responses. Position is
-        determined by classical MDS on the group's aggregate distance matrix.
-        Axes have no inherent meaning — only relative distances matter.
+        {hasRealData
+          ? "Maps are recomputed hourly from all submitted responses. Position is determined by classical MDS on the group's aggregate distance matrix. Axes have no inherent meaning — only relative distances matter."
+          : "Real maps are computed hourly once a group reaches the minimum respondent threshold. The simulated map above uses theoretically motivated distances; it shows what domain-level clustering might look like, not what it actually does."}
       </div>
 
       {(!nResponses || nResponses < 50) && (

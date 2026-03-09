@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, NavLink } from "react-router-dom";
 import "./styles/global.css";
+import { CONCEPTS, TOTAL_PAIRS } from "./lib/concepts";
 import Home from "./pages/Home";
 import Survey from "./pages/Survey";
 import Explore from "./pages/Explore";
@@ -69,7 +70,7 @@ function Footer() {
       gap: "0.5rem",
     }}>
       <span>MINDSPACE</span>
-      <span>63 CONCEPTS · 1,953 PAIRS · FORCE-DIRECTED + MDS</span>
+      <span>{CONCEPTS.length} CONCEPTS · {TOTAL_PAIRS.toLocaleString()} PAIRS · FORCE-DIRECTED + MDS</span>
     </footer>
   );
 }

@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { CONCEPTS, DOMAINS, TOTAL_PAIRS } from "../lib/concepts";
 
 const S = {
   page: {
@@ -126,7 +127,7 @@ export default function About() {
           correct answers.
         </p>
         <p style={S.p}>
-          The 63 concepts span 10 domains and were selected to maximize
+          The {CONCEPTS.length} concepts span {DOMAINS.length} domains and were selected to maximize
           between-group signal while minimizing empathy-corrosive framing. Several
           concepts are deliberately ambiguous across groups:{" "}
           <span style={S.highlight}>Devout</span> and{" "}
@@ -175,7 +176,7 @@ export default function About() {
       <div style={S.section}>
         <h2 style={S.h2}>Pair rotation</h2>
         <p style={S.p}>
-          With 1,953 total pairs and 20 pairs per batch, pairs are rotated
+          With {TOTAL_PAIRS.toLocaleString()} total pairs and 20 pairs per batch, pairs are rotated
           across respondents using an incomplete block design. Each session is
           assigned a pseudo-random ordering of the full pair list, and respondents
           may continue rating in batches of 20 after the first checkpoint. This
