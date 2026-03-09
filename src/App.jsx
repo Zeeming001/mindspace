@@ -69,7 +69,7 @@ function Footer() {
       gap: "0.5rem",
     }}>
       <span>MINDSPACE</span>
-      <span>63 CONCEPTS · 1,953 PAIRS · CLASSICAL MDS</span>
+      <span>63 CONCEPTS · 1,953 PAIRS · FORCE-DIRECTED + MDS</span>
     </footer>
   );
 }

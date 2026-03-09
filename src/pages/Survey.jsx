@@ -10,7 +10,7 @@
  *     and choose to "Rate 20 more" or stop
  *   - All 1,953 pairs are available; motivated respondents can complete the full matrix
  *   - Responses are saved to Supabase after each batch (incremental, not on final submit)
- *   - Personal MDS map is computed in-browser from ratings accumulated so far
+ *   - Personal concept network (force-directed graph) is rendered from ratings accumulated so far
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -267,25 +267,24 @@ function PrivacyNotice({ onAccept, alreadyCompleted }) {
     <div style={S.card}>
       <span style={S.label}>Before you begin</span>
       <h2 style={S.h2}>A note on your data</h2>
+      {alreadyCompleted && (
+        <div style={{
+          background: "rgba(184,136,10,0.06)",
+          border: "1px solid rgba(184,136,10,0.25)",
+          borderRadius: "4px",
+          padding: "0.9rem 1.1rem",
+          marginBottom: "1.4rem",
+          fontSize: "0.72rem",
+          color: "#b8880a",
+          lineHeight: 1.7,
+        }}>
+          It looks like you've completed a session from this browser before. Your
+          previous responses are already saved — continuing will add more pair ratings
+          to the same anonymous session rather than creating a duplicate record.
+        </div>
+      )}
       <p style={S.p}>
         This survey collects your ratings for pairs of personal descriptions.
-
-              {alreadyCompleted && (
-                      <div style={{
-                                background: "rgba(184,136,10,0.06)",
-                                          border: "1px solid rgba(184,136,10,0.25)",
-                                                    borderRadius: "4px",
-                                                              padding: "0.9rem 1.1rem",
-                                                                        marginBottom: "1.4rem",
-                                                                                  fontSize: "0.72rem",
-                                                                                            color: "#b8880a",
-                                                                                                      lineHeight: 1.7,
-                                                                                                              }}>
-                                                                                                                        It looks like you've completed a session from this browser before. Your
-                                                                                                                                  previous responses are already saved — continuing will add more pair ratings
-                                                                                                                                            to the same anonymous session rather than creating a duplicate record.
-                                                                                                                                                    </div>
-                                                                                                                                                          )}
         Your responses are stored anonymously — identified only by a randomly generated
         session ID, with no link to your name, email, or IP address.
       </p>

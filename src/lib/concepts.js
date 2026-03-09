@@ -86,13 +86,6 @@ export function getAllPairsForSession(sessionIndex) {
   return shuffled;
 }
 
-/**
- * Legacy helper kept for backward compatibility.
- */
-export function getPairsForSessionIndex(sessionIndex, batchSize = 60) {
-  return getAllPairsForSession(sessionIndex).slice(0, batchSize);
-}
-
 // Groups available for stratified explore view
 export const GROUPS = [
   { id: "all",            label: "All respondents",         field: null,        value: null },

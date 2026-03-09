@@ -34,27 +34,3 @@ a {
 ::-webkit-scrollbar-track { background: #f0eeeb; }
 ::-webkit-scrollbar-thumb { background: #d0ccc4; border-radius: 2px; }
 
-/* Transitions for MDS plot nodes */
-.concept-node {
-  transition: r 0.2s ease, opacity 0.2s ease;
-}
-
-/* Smooth position animation for group switching */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.fade-in {
-  animation: fadeIn 0.3s ease forwards;
-}
-
-/* Survey card fade */
-@keyframes cardFade {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-.survey-card-enter {
-  animation: cardFade 0.25s ease forwards;
-}

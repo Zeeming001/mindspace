@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { CONCEPTS, CONCEPT_COLOR, CONCEPT_DOMAIN, DOMAINS } from "../lib/concepts";
+import { CONCEPTS, CONCEPT_COLOR, DOMAINS } from "../lib/concepts";
 import { classicalMDS, buildDistanceMatrix, normalizeCoords } from "../lib/mds";
 
 /**

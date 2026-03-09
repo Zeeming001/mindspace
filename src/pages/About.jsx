@@ -119,14 +119,24 @@ export default function About() {
       <div style={S.section}>
         <h2 style={S.h2}>Survey design</h2>
         <p style={S.p}>
-          Respondents rate the subjective similarity of 60 concept pairs on a
-          1–5 Likert scale. The framing — "in your mind" — is deliberate: we're
+          Respondents rate the subjective similarity of concept pairs on a
+          1–5 Likert scale, starting with 20 pairs before a demographics
+          checkpoint. The framing — "in your mind" — is deliberate: we're
           measuring personal association, not factual proximity. There are no
           correct answers.
         </p>
         <p style={S.p}>
           The 63 concepts span 10 domains and were selected to maximize
-          between-group signal while minimizing empathy-corrosive framing.
+          between-group signal while minimizing empathy-corrosive framing. Several
+          concepts are deliberately ambiguous across groups:{" "}
+          <span style={S.highlight}>Devout</span> and{" "}
+          <span style={S.highlight}>Atheist</span> cluster together for some
+          respondents (shared intensity of belief) and at opposite poles for
+          others; <span style={S.highlight}>Amused by irony</span> correlates
+          with certain epistemic dispositions across the political spectrum;{" "}
+          <span style={S.highlight}>Traditionalist</span> sits near{" "}
+          <span style={S.highlight}>Patriotic</span> for some groups and near{" "}
+          <span style={S.highlight}>Reverent</span> for others.
         </p>
         <p style={S.p}>
           Demographic questions appear after answering at least twenty survey questions. Pre-survey
@@ -165,16 +175,17 @@ export default function About() {
       <div style={S.section}>
         <h2 style={S.h2}>Pair rotation</h2>
         <p style={S.p}>
-          With 1,953 total pairs and 60 questions per session, pairs are rotated
+          With 1,953 total pairs and 20 pairs per batch, pairs are rotated
           across respondents using an incomplete block design. Each session is
-          assigned a pseudo-random batch that advances through the full pair list
-          in cycle. This ensures roughly uniform coverage across all pairs without
-          requiring coordination between sessions.
+          assigned a pseudo-random ordering of the full pair list, and respondents
+          may continue rating in batches of 20 after the first checkpoint. This
+          ensures roughly uniform coverage across all pairs without requiring
+          coordination between sessions.
         </p>
         <p style={S.p}>
-          Approximately 33 respondents per group are needed to achieve complete
-          pair coverage. Groups are displayed as soon as 15 respondents have
-          contributed.
+          Approximately 98 respondents are needed to achieve complete pair
+          coverage at 20 pairs per session. Groups are displayed as soon as 15
+          respondents have contributed.
         </p>
       </div>
 

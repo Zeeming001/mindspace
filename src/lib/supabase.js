@@ -92,7 +92,7 @@ export async function fetchGroupCounts() {
   const { data, error } = await supabase
     .from("aggregate_positions")
     .select("group_key, n_responses")
-    .eq("concept", "Justice"); // sentinel: all groups have this concept
+    .eq("concept", "Kind"); // sentinel: stable concept present in all groups
 
   if (error) throw error;
   const counts = {};
@@ -103,4 +103,3 @@ export async function fetchGroupCounts() {
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 export const MIN_RESPONDENTS = 15; // minimum before showing a group's map
-export const BATCH_SIZE = 60;      // pairs per survey session

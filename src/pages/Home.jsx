@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { DOMAINS } from "../lib/concepts";
+import { DOMAINS, CONCEPTS, TOTAL_PAIRS } from "../lib/concepts";
 
 const S = {
   page: {
@@ -150,7 +150,7 @@ export default function Home() {
         <div style={S.divider} />
 
         <div style={{ fontSize: "0.6rem", letterSpacing: "0.15em", color: "#888", textTransform: "uppercase", marginBottom: "0.8rem" }}>
-          63 concepts across 10 domains
+          {CONCEPTS.length} concepts across {DOMAINS.length} domains
         </div>
 
         <div style={S.domainGrid}>
@@ -170,10 +170,10 @@ export default function Home() {
 
         <div style={S.meta}>
           {[
-            { value: "63",    label: "Concepts" },
-            { value: "1,953", label: "Total pairs" },
-            { value: "60",    label: "Pairs per session" },
-            { value: "~8 min", label: "Estimated time" },
+            { value: CONCEPTS.length,                               label: "Concepts" },
+            { value: TOTAL_PAIRS.toLocaleString(),                  label: "Total pairs" },
+            { value: "20+",                                         label: "Pairs per session" },
+            { value: "~3 min",                                      label: "Minimum time" },
           ].map(({ value, label }) => (
             <div key={label} style={S.metaItem}>
               <span style={S.metaValue}>{value}</span>
