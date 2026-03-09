@@ -203,6 +203,49 @@ export default function ForceGraph({
     return { textAnchor, dx, dy };
   }
 
+  // ── Greedy collision-avoidance for "labels on" mode ──────────────────────
+  // Hovered labels always show regardless; this set only controls the batch mode.
+  const visibleLabels = useMemo(() => {
+    if (!showLabels || !positions) return new Set();
+
+    const CHAR_W = 5.1;   // approx px per char at 8.5 px IBM Plex Mono
+    const LINE_H = 13;    // approx label height in px
+
+    const placed  = [];
+    const visible = new Set();
+
+    for (let i = 0; i < nodes.length; i++) {
+      if (!positions[i]) continue;
+      const concept = nodes[i];
+      const px  = positions[i].x;
+      const py  = positions[i].y;
+
+      // Mirror labelAnchor logic (uses width/height from props)
+      const xN        = px / width;
+      const yN        = py / height;
+      const textAnchor = xN < 0.35 ? "start" : xN > 0.65 ? "end" : "middle";
+      const dx         = xN < 0.35 ?  9       : xN > 0.65 ? -9    : 0;
+      const dy         = yN < 0.3  ?  14      : -9;
+
+      const lw = concept.length * CHAR_W;
+      const lx = textAnchor === "start" ? px + dx
+               : textAnchor === "end"   ? px + dx - lw
+               :                          px + dx - lw / 2;
+      const ly = py + dy - LINE_H;
+
+      const overlaps = placed.some(b =>
+        lx < b.x + b.w && lx + lw > b.x && ly < b.y + b.h && ly + LINE_H > b.y
+      );
+
+      if (!overlaps) {
+        placed.push({ x: lx, y: ly, w: lw, h: LINE_H });
+        visible.add(concept);
+      }
+    }
+
+    return visible;
+  }, [showLabels, positions, nodes, width, height]);
+
   // ── Early-exit states ─────────────────────────────────────────────────────
   const placeholder = (msg) => (
     <div style={{ width, height, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -244,6 +287,17 @@ export default function ForceGraph({
         >
           {showLabels ? "Labels on" : "Labels off"}
         </button>
+      </div>
+
+      {/* Explainer */}
+      <div style={{
+        fontSize: "0.6rem",
+        color: "#999",
+        letterSpacing: "0.03em",
+        marginBottom: "0.55rem",
+        lineHeight: 1.5,
+      }}>
+        Each node is a concept you've rated. Edges connect rated pairs — thicker &amp; darker means more similar.
       </div>
 
       <svg
@@ -290,7 +344,7 @@ export default function ForceGraph({
           const py        = positions[i].y;
           const color     = CONCEPT_COLOR[concept];
           const isHovered = hovered === concept;
-          const showLabel = showLabels || isHovered;
+          const showLabel = (showLabels && visibleLabels.has(concept)) || isHovered;
           const { textAnchor, dx, dy } = labelAnchor(px, py);
 
           return (

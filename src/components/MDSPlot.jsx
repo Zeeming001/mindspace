@@ -134,6 +134,57 @@ export default function MDSPlot({
     return { anchor, dx, dy };
   }
 
+  // Greedy collision-avoidance: compute which labels can be shown without overlap.
+  // Hovered labels are always shown regardless; this set only controls the "all labels" mode.
+  const visibleLabels = useMemo(() => {
+    if (!showLabels || !displayCoords) return new Set();
+
+    // Recompute layout constants here (mirrors the values used during render)
+    const p   = { top: 24, right: 110, bottom: 24, left: 110 };
+    const iW  = width  - p.left - p.right;
+    const iH  = height - p.top  - p.bottom;
+    const toX = (nx) => p.left + nx * iW;
+    const toY = (ny) => p.top  + ny * iH;
+
+    const CHAR_W = 5.1;   // approx px per char at 8.5 px IBM Plex Mono
+    const LINE_H = 13;    // approx label height in px
+
+    const placed  = [];
+    const visible = new Set();
+
+    for (const concept of concepts) {
+      const c = displayCoords[concept];
+      if (!c) continue;
+
+      const cx = toX(c.x);
+      const cy = toY(c.y);
+      const nx = c.x;
+      const ny = c.y;
+
+      // Mirror labelPlacement logic
+      const anchor = nx < 0.4 ? "start" : nx > 0.6 ? "end" : "middle";
+      const dx     = nx < 0.4 ?  8      : nx > 0.6 ? -8    : 0;
+      const dy     = ny < 0.35 ? 14     : -9;
+
+      const lw = concept.length * CHAR_W;
+      const lx = anchor === "start"  ? cx + dx
+               : anchor === "end"    ? cx + dx - lw
+               :                       cx + dx - lw / 2;
+      const ly = cy + dy - LINE_H;
+
+      const overlaps = placed.some(b =>
+        lx < b.x + b.w && lx + lw > b.x && ly < b.y + b.h && ly + LINE_H > b.y
+      );
+
+      if (!overlaps) {
+        placed.push({ x: lx, y: ly, w: lw, h: LINE_H });
+        visible.add(concept);
+      }
+    }
+
+    return visible;
+  }, [showLabels, displayCoords, concepts, width, height]);
+
   if (loading) {
     return (
       <div style={{ width, height, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -209,8 +260,8 @@ export default function MDSPlot({
           const isHovered = hovered === concept;
           const { anchor, dx, dy } = labelPlacement(c.x, c.y);
 
-          // Show label if: all-labels mode is on, OR this dot is hovered
-          const renderLabel = showLabels || isHovered;
+          // Show label if: collision-safe in all-labels mode, OR this dot is hovered
+          const renderLabel = (showLabels && visibleLabels.has(concept)) || isHovered;
 
           return (
             <g

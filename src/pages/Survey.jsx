@@ -696,8 +696,8 @@ export default function Survey() {
 
       if (batchStart === 0) {
         markSessionCompleted();
-                  // First batch done → go to demographics
-        setPhase(PHASE.DEMOGRAPHICS);
+        // First batch done → skip demographics for returning users
+        setPhase(alreadyCompleted ? PHASE.CHECKPOINT : PHASE.DEMOGRAPHICS);
       } else {
         // Subsequent batch done → checkpoint
         setPhase(PHASE.CHECKPOINT);
@@ -705,7 +705,7 @@ export default function Survey() {
     } else {
       setPairIdx(nextIdx);
     }
-  }, [allPairs, batchStart, batchSize, pairIdx, ratings, sessionId]);
+  }, [allPairs, alreadyCompleted, batchStart, batchSize, pairIdx, ratings, sessionId]);
 
   // ── Demographics submitted ─────────────────────────────────────────────────
 
