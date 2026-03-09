@@ -13,14 +13,14 @@ export const DOMAINS = [
 
 export const CONCEPTS_BY_DOMAIN = {
   knowledge:  ["Intellectual", "Rational", "Scientific", "Intuitive", "Mystical", "Practical"],
-  religion:   ["Devout", "Atheist", "Spiritual", "Aware of personal guilt", "Believes in grace", "Reverent"],
-  moral:      ["Just", "Merciful", "Loyal", "Deferential", "Caring", "Emphasizes purity", "Principled"],
-  politics:   ["Liberty-loving", "Egalitarian", "Values security", "Seeks order", "Democratic", "Traditionalist", "Patriotic"],
-  society:    ["Family-oriented", "Pro-marriage", "Sexually liberated", "LGBTQ+ affirming", "Pro-religious liberty", "Multicultural"],
-  bodies:     ["Pro-choice", "Bodily-sovereign", "Consent-focused", "Believes in innocence", "Interdependent"],
-  law:        ["Pro-policing", "Rehabilitative", "Punitive", "Tough on crime", "Free speech absolutist", "Surveillance-tolerant", "Pro-death penalty", "Reconciliation-minded"],
-  economy:    ["Pro-welfare", "Free-market", "Meritocratic", "Inequality-tolerant", "Poverty-conscious", "Solidarity-minded"],
-  aesthetics: ["Aesthetic", "Truth-seeking", "Power-driven", "Seeks meaning", "Authentic", "Ironic"],
+  religion:   ["Devout", "Atheist", "Spiritual", "Deeply concerned with personal guilt", "Believes in grace", "Reverent"],
+  moral:      ["Just", "Merciful", "Loyal", "Deferential to authority", "Caring", "Emphasizes moral purity", "Principled"],
+  politics:   ["Values personal liberty", "Egalitarian", "Values security", "Seeks order", "Democratic", "Traditionalist", "Patriotic"],
+  society:    ["Family-oriented", "Pro-marriage", "Sexually liberated", "LGBTQ+ affirming", "Pro-religious liberty", "Supports multiculturalism"],
+  bodies:     ["Pro-choice", "Emphasizes bodily sovereignty", "Emphasizes consent", "Emphasizes human interdependence"],
+  law:        ["Pro-police", "Emphasizes rehabilitative justice", "Emphasizes punitive justice", "Tough on crime", "Emphasizes free speech", "Tolerates government surveillance", "Believes in the death penalty", "Emphasizes reconciliation"],
+  economy:    ["Supports a welfare state", "Supports a free-market economy", "Believes in meritocracy", "Tolerates inequality in society", "Cares about promoting economic equality in society"],
+  aesthetics: ["Driven by the desire for beauty", "Driven by the desire for truth", "Driven by the desire for power", "Driven by the desire for meaning", "Driven by the desire for personal authenticity", "Amused by irony"],
   identity:   ["Kind", "Honest", "Ambitious", "Humble", "Hardworking", "Believes in luck"],
 };
 
