@@ -18,7 +18,7 @@ import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import { CONCEPT_COLOR, getAllPairsForSession, FIRST_BATCH_SIZE, CONTINUED_BATCH_SIZE, TOTAL_PAIRS } from "../lib/concepts";
 import { claimSessionIndex, createSession, saveResponses, saveSession } from "../lib/supabase";
-import MDSPlot from "../components/MDSPlot";
+import ForceGraph from "../components/ForceGraph";
 
 // ─── Phases ──────────────────────────────────────────────────────────────────
 
@@ -550,13 +550,12 @@ function Checkpoint({ ratings, totalPairs, onContinue, onDone }) {
           marginBottom: "2rem",
           overflowX: "auto",
         }}>
-          <MDSPlot
+          <ForceGraph
             responses={responses}
-            concepts={conceptsInSession}
             width={680}
             height={420}
             showLegend={true}
-            label={`Your concept map — ${conceptsInSession.length} concepts`}
+            label={`Your concept network — ${conceptsInSession.length} concepts`}
           />
         </div>
       )}
