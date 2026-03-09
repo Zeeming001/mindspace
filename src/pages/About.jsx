@@ -126,16 +126,10 @@ export default function About() {
         </p>
         <p style={S.p}>
           The 63 concepts span 10 domains and were selected to maximize
-          between-group signal while minimizing empathy-corrosive framing. Several
-          concepts are deliberately ambiguous across groups:{" "}
-          <span style={S.highlight}>Sanctity</span> is expected to cluster
-          differently for religious and secular respondents;{" "}
-          <span style={S.highlight}>Dependence</span> surfaces divergent framings
-          of need; <span style={S.highlight}>Irony</span> correlates with certain
-          epistemic dispositions across the political spectrum.
+          between-group signal while minimizing empathy-corrosive framing.
         </p>
         <p style={S.p}>
-          Demographic questions appear after the survey — never before. Pre-survey
+          Demographic questions appear after answering at least twenty survey questions. Pre-survey
           identity priming activates social desirability bias and degrades the
           associative validity of responses.
         </p>
