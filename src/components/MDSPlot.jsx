@@ -27,6 +27,7 @@ export default function MDSPlot({
   label = null,
 }) {
   const [hovered, setHovered] = useState(null);
+  const [showLabels, setShowLabels] = useState(false);
   const prevCoordsRef = useRef(null);
   const [displayCoords, setDisplayCoords] = useState(null);
   const animFrameRef = useRef(null);
@@ -113,17 +114,30 @@ export default function MDSPlot({
     return () => { if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current); };
   }, [coords]);
 
-  const pad = { top: 24, right: 24, bottom: 24, left: 24 };
+  // Padding: extra horizontal room for edge labels when all labels are shown
+  const pad = showLabels
+    ? { top: 24, right: 110, bottom: 24, left: 110 }
+    : { top: 24, right: 24,  bottom: 24, left: 24  };
+
   const innerW = width - pad.left - pad.right;
   const innerH = height - pad.top - pad.bottom;
 
   const toSvgX = (nx) => pad.left + nx * innerW;
-  const toSvgY = (ny) => pad.top + ny * innerH;
+  const toSvgY = (ny) => pad.top  + ny * innerH;
+
+  // Given a normalised position, return text-anchor and x/y offsets
+  // that keep the label within the SVG bounds and away from the dot.
+  function labelPlacement(nx, ny) {
+    const anchor = nx < 0.4 ? "start" : nx > 0.6 ? "end" : "middle";
+    const dx     = nx < 0.4 ?  8      : nx > 0.6 ? -8    : 0;
+    const dy     = ny < 0.35 ? 14     : -9;   // below dot near top edge, above elsewhere
+    return { anchor, dx, dy };
+  }
 
   if (loading) {
     return (
       <div style={{ width, height, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <span style={{ fontSize: "0.65rem", letterSpacing: "0.2em", color: "#333", textTransform: "uppercase" }}>
+        <span style={{ fontSize: "0.65rem", letterSpacing: "0.2em", color: "#888", textTransform: "uppercase" }}>
           Loading…
         </span>
       </div>
@@ -133,7 +147,7 @@ export default function MDSPlot({
   if (!displayCoords) {
     return (
       <div style={{ width, height, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <span style={{ fontSize: "0.65rem", letterSpacing: "0.2em", color: "#333", textTransform: "uppercase" }}>
+        <span style={{ fontSize: "0.65rem", letterSpacing: "0.2em", color: "#888", textTransform: "uppercase" }}>
           Not enough data yet
         </span>
       </div>
@@ -142,11 +156,34 @@ export default function MDSPlot({
 
   return (
     <div>
-      {label && (
-        <div style={{ fontSize: "0.6rem", letterSpacing: "0.15em", color: "#444", textTransform: "uppercase", marginBottom: "0.5rem" }}>
-          {label}
-        </div>
-      )}
+      {/* Header row: optional label + toggle button */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
+        {label && (
+          <div style={{ fontSize: "0.6rem", letterSpacing: "0.15em", color: "#888", textTransform: "uppercase" }}>
+            {label}
+          </div>
+        )}
+        <button
+          onClick={() => setShowLabels(s => !s)}
+          style={{
+            marginLeft: "auto",
+            fontSize: "0.55rem",
+            letterSpacing: "0.15em",
+            textTransform: "uppercase",
+            padding: "0.3rem 0.7rem",
+            border: "1px solid #d0ccc4",
+            borderRadius: "3px",
+            background: showLabels ? "#1a1a1e" : "transparent",
+            color:  showLabels ? "#f8f7f4" : "#888",
+            cursor: "pointer",
+            transition: "all 0.2s",
+            fontFamily: "inherit",
+          }}
+        >
+          {showLabels ? "Labels on" : "Labels off"}
+        </button>
+      </div>
+
       <svg
         width={width}
         height={height}
@@ -170,6 +207,10 @@ export default function MDSPlot({
           const cy = toSvgY(c.y);
           const color = CONCEPT_COLOR[concept];
           const isHovered = hovered === concept;
+          const { anchor, dx, dy } = labelPlacement(c.x, c.y);
+
+          // Show label if: all-labels mode is on, OR this dot is hovered
+          const renderLabel = showLabels || isHovered;
 
           return (
             <g
@@ -182,20 +223,23 @@ export default function MDSPlot({
                 cx={cx} cy={cy}
                 r={isHovered ? 7 : 5}
                 fill={color}
-                opacity={isHovered ? 1 : 0.7}
+                opacity={isHovered ? 1 : 0.75}
                 filter={isHovered ? "url(#glow)" : "none"}
                 style={{ transition: "r 0.15s, opacity 0.15s" }}
               />
-              <text
-                x={cx} y={cy - 9}
-                textAnchor="middle"
-                fontSize={isHovered ? 10 : 8.5}
-                fill={isHovered ? color : "#6a6a72"}
-                fontFamily="'IBM Plex Mono', monospace"
-                style={{ transition: "font-size 0.15s, fill 0.15s", userSelect: "none", pointerEvents: "none" }}
-              >
-                {concept}
-              </text>
+              {renderLabel && (
+                <text
+                  x={cx + dx}
+                  y={cy + dy}
+                  textAnchor={anchor}
+                  fontSize={isHovered ? 10.5 : 8.5}
+                  fill={isHovered ? color : "#555"}
+                  fontFamily="'IBM Plex Mono', monospace"
+                  style={{ transition: "font-size 0.15s, fill 0.15s", userSelect: "none", pointerEvents: "none" }}
+                >
+                  {concept}
+                </text>
+              )}
             </g>
           );
         })}
