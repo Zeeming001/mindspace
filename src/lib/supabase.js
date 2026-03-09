@@ -100,6 +100,19 @@ export async function fetchGroupCounts() {
   return counts;
 }
 
+/**
+ * Fetch all responses for a given session ID (for the personal "Your map" view).
+ * Returns an array of { concept_a, concept_b, rating }.
+ */
+export async function fetchSessionResponses(sessionId) {
+  const { data, error } = await supabase
+    .from("responses")
+    .select("concept_a, concept_b, rating")
+    .eq("session_id", sessionId);
+  if (error) throw error;
+  return data || [];
+}
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 export const MIN_RESPONDENTS = 15; // minimum before showing a group's map

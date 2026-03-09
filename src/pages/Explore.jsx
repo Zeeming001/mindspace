@@ -1,9 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { GROUPS } from "../lib/concepts";
-import { fetchGroupPositions, fetchGroupCounts, MIN_RESPONDENTS } from "../lib/supabase";
+import { fetchGroupPositions, fetchGroupCounts, fetchSessionResponses, MIN_RESPONDENTS } from "../lib/supabase";
 import { SAMPLE_POSITIONS } from "../lib/samplePositions";
 import MDSPlot from "../components/MDSPlot";
+import ForceGraph from "../components/ForceGraph";
+
+// LocalStorage key — must match Survey.jsx
+const LS_SESSION_KEY = "mindspace_session_id";
 
 const S = {
   page: {
@@ -41,6 +45,7 @@ const S = {
     display: "flex",
     flexWrap: "wrap",
     gap: "0.5rem",
+    alignItems: "center",
   },
   groupTab: (active) => ({
     padding: "0.45rem 1rem",
@@ -56,6 +61,26 @@ const S = {
     background: active ? "rgba(126,184,212,0.1)" : "transparent",
     color: active ? "#4a90b8" : "#555",
   }),
+  myTab: (active) => ({
+    padding: "0.45rem 1rem",
+    fontSize: "0.63rem",
+    letterSpacing: "0.1em",
+    textTransform: "uppercase",
+    fontFamily: "inherit",
+    cursor: "pointer",
+    border: "1px solid",
+    borderRadius: "3px",
+    transition: "all 0.15s",
+    borderColor: active ? "#b8880a" : "#d0ccc4",
+    background: active ? "rgba(184,136,10,0.08)" : "transparent",
+    color: active ? "#b8880a" : "#888",
+  }),
+  tabDivider: {
+    width: "1px",
+    height: "1.4rem",
+    background: "#e0dbd3",
+    flexShrink: 0,
+  },
   plotContainer: {
     background: "#ffffff",
     border: "1px solid #e0dbd3",
@@ -133,12 +158,24 @@ const S = {
 
 export default function Explore() {
   const navigate = useNavigate();
+
+  // ── Group selection ─────────────────────────────────────────────────────────
   const [selectedGroupId, setSelectedGroupId] = useState("all");
-  const [positions, setPositions] = useState(null);
-  const [counts, setCounts] = useState({});
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [computedAt, setComputedAt] = useState(null);
+
+  // ── Aggregate map state ─────────────────────────────────────────────────────
+  const [positions,   setPositions]   = useState(null);
+  const [counts,      setCounts]      = useState({});
+  const [loading,     setLoading]     = useState(false);
+  const [error,       setError]       = useState(null);
+  const [computedAt,  setComputedAt]  = useState(null);
+
+  // ── Personal map state ──────────────────────────────────────────────────────
+  const [sessionId] = useState(() => {
+    try { return localStorage.getItem(LS_SESSION_KEY) || null; } catch { return null; }
+  });
+  const [myResponses, setMyResponses] = useState(null);   // null = not yet fetched
+  const [myLoading,   setMyLoading]   = useState(false);
+  const [myError,     setMyError]     = useState(null);
 
   // Load group counts once on mount
   useEffect(() => {
@@ -147,8 +184,10 @@ export default function Explore() {
       .catch(() => {}); // non-fatal
   }, []);
 
-  // Load positions whenever selected group changes
+  // Load aggregate positions whenever selected group changes (skip for personal tab)
   useEffect(() => {
+    if (selectedGroupId === "mine") return;
+
     setLoading(true);
     setError(null);
     setPositions(null);
@@ -162,33 +201,47 @@ export default function Explore() {
           if (data[0]?.computed_at) setComputedAt(data[0].computed_at);
         }
       })
-      .catch((err) => {
-        setError(err.message);
-      })
+      .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, [selectedGroupId]);
 
-  const selectedGroup  = GROUPS.find(g => g.id === selectedGroupId);
-  const nResponses     = counts[selectedGroupId] ?? null;
-  const hasRealData    = nResponses !== null && nResponses >= MIN_RESPONDENTS;
+  // Load personal responses when personal tab is selected
+  useEffect(() => {
+    if (selectedGroupId !== "mine" || !sessionId) return;
+    if (myResponses !== null) return; // already fetched
 
-  // Show simulated positions when: "all" group is selected and not enough real data yet.
-  // For demographic sub-groups (political, religious) we still show "not enough data" —
-  // the sample is only a useful stand-in for the aggregate "all respondents" view.
-  const showSample     = !hasRealData && selectedGroupId === "all";
+    setMyLoading(true);
+    setMyError(null);
+    fetchSessionResponses(sessionId)
+      .then(setMyResponses)
+      .catch((err) => { setMyError(err.message); setMyResponses([]); })
+      .finally(() => setMyLoading(false));
+  }, [selectedGroupId, sessionId, myResponses]);
+
+  // ── Derived values ──────────────────────────────────────────────────────────
+  const selectedGroup    = GROUPS.find(g => g.id === selectedGroupId);
+  const nResponses       = counts[selectedGroupId] ?? null;
+  const hasRealData      = nResponses !== null && nResponses >= MIN_RESPONDENTS;
+  const showSample       = !hasRealData && selectedGroupId === "all";
   const displayPositions = hasRealData ? positions : (showSample ? SAMPLE_POSITIONS : null);
 
+  const myConceptCount = myResponses
+    ? new Set(myResponses.flatMap(r => [r.concept_a, r.concept_b])).size
+    : 0;
+
+  // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div style={S.page}>
       <div style={S.header}>
         <h1 style={S.title}>Explore concept maps</h1>
         <p style={S.subtitle}>
-          Each point is a concept. Proximity reflects psychological similarity
-          within the selected group's average ratings. Switch groups to compare
-          how different communities organize these ideas.
+          {selectedGroupId === "mine"
+            ? "Your personal network shows how the concepts you've rated relate to each other based on your own similarity judgements."
+            : "Each point is a concept. Proximity reflects psychological similarity within the selected group's average ratings. Switch groups to compare how different communities organize these ideas."}
         </p>
       </div>
 
+      {/* ── Group selector tabs ── */}
       <div style={S.controls}>
         <span style={S.controlLabel}>Viewing mindspace for:</span>
         <div style={S.groupTabs}>
@@ -206,89 +259,194 @@ export default function Explore() {
               )}
             </button>
           ))}
+
+          {/* Visual divider */}
+          <div style={S.tabDivider} />
+
+          {/* Personal tab */}
+          <button
+            style={S.myTab(selectedGroupId === "mine")}
+            onClick={() => setSelectedGroupId("mine")}
+          >
+            Your map
+            {myResponses && myResponses.length > 0 && (
+              <span style={{ marginLeft: "0.4rem", opacity: 0.6 }}>
+                {myResponses.length} pairs
+              </span>
+            )}
+          </button>
         </div>
       </div>
 
+      {/* ── Plot area ── */}
       <div style={S.plotContainer}>
-        {error ? (
-          <div style={{ ...S.warning, color: "#d47e7e", borderColor: "#d47e7e22" }}>
-            Could not load data: {error}
-          </div>
-        ) : !hasRealData && !showSample ? (
-          // Demographic sub-group: not enough data, no fallback
-          <div style={S.warning}>
-            Not enough data yet for this group (minimum {MIN_RESPONDENTS} respondents required
-            {nResponses !== null ? `, currently ${nResponses}` : ""}). Take the survey to contribute.
-          </div>
-        ) : (
-          // Real data or sample fallback
-          <div>
-            {showSample && (
-              <div style={S.simulatedBanner}>
-                <span style={{ fontSize: "0.75rem" }}>⚠</span>
-                <span>
-                  <strong>Simulated data</strong> — this map is generated from a theoretical
-                  model, not real survey responses. It will be automatically replaced once{" "}
-                  {MIN_RESPONDENTS} respondents have contributed.
-                  {nResponses !== null && nResponses > 0 && (
-                    <> Currently {nResponses} of {MIN_RESPONDENTS} needed.</>
-                  )}
-                </span>
-              </div>
-            )}
-            <MDSPlot
-              positions={displayPositions}
-              loading={loading && !showSample}
+        {selectedGroupId === "mine" ? (
+
+          // ── Personal map ──────────────────────────────────────────────────
+          myLoading ? (
+            <div style={{ minHeight: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ fontSize: "0.65rem", color: "#888", letterSpacing: "0.2em", textTransform: "uppercase" }}>
+                Loading…
+              </span>
+            </div>
+          ) : !sessionId ? (
+            <div style={S.warning}>
+              You haven't taken the survey yet — your personal map will appear here
+              after your first session.
+            </div>
+          ) : myError ? (
+            <div style={{ ...S.warning, color: "#d47e7e", borderColor: "#d47e7e22" }}>
+              Could not load your responses: {myError}
+            </div>
+          ) : !myResponses || myResponses.length === 0 ? (
+            <div style={S.warning}>
+              No responses found for your session. If you've taken the survey,
+              try refreshing — or continue rating to add more data.
+            </div>
+          ) : (
+            <ForceGraph
+              responses={myResponses}
               width={700}
               height={520}
               showLegend={true}
             />
-          </div>
+          )
+
+        ) : (
+
+          // ── Aggregate map ─────────────────────────────────────────────────
+          error ? (
+            <div style={{ ...S.warning, color: "#d47e7e", borderColor: "#d47e7e22" }}>
+              Could not load data: {error}
+            </div>
+          ) : !hasRealData && !showSample ? (
+            <div style={S.warning}>
+              Not enough data yet for this group (minimum {MIN_RESPONDENTS} respondents required
+              {nResponses !== null ? `, currently ${nResponses}` : ""}). Take the survey to contribute.
+            </div>
+          ) : (
+            <div>
+              {showSample && (
+                <div style={S.simulatedBanner}>
+                  <span style={{ fontSize: "0.75rem" }}>⚠</span>
+                  <span>
+                    <strong>Simulated data</strong> — this map is generated from a theoretical
+                    model, not real survey responses. It will be automatically replaced once{" "}
+                    {MIN_RESPONDENTS} respondents have contributed.
+                    {nResponses !== null && nResponses > 0 && (
+                      <> Currently {nResponses} of {MIN_RESPONDENTS} needed.</>
+                    )}
+                  </span>
+                </div>
+              )}
+              <MDSPlot
+                positions={displayPositions}
+                loading={loading && !showSample}
+                width={700}
+                height={520}
+                showLegend={true}
+              />
+            </div>
+          )
         )}
       </div>
 
+      {/* ── Meta row ── */}
       <div style={S.meta}>
-        <span style={S.metaItem}>
-          Group: <span style={S.metaValue}>{selectedGroup?.label}</span>
-        </span>
-        {nResponses !== null && (
-          <span style={S.metaItem}>
-            Respondents: <span style={S.metaValue}>{nResponses}</span>
-          </span>
-        )}
-        {hasRealData && computedAt && (
-          <span style={S.metaItem}>
-            Map computed: <span style={S.metaValue}>
-              {new Date(computedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+        {selectedGroupId === "mine" ? (
+          <>
+            <span style={S.metaItem}>
+              Source: <span style={S.metaValue}>your session</span>
             </span>
-          </span>
-        )}
-        <span style={S.metaItem}>
-          Min. threshold: <span style={S.metaValue}>{MIN_RESPONDENTS} respondents</span>
-        </span>
-        {showSample && (
-          <span style={{ ...S.metaItem, color: "#b8880a" }}>
-            Source: <span style={{ color: "#b8880a" }}>simulated</span>
-          </span>
+            {myResponses && (
+              <span style={S.metaItem}>
+                Pairs rated: <span style={S.metaValue}>{myResponses.length}</span>
+              </span>
+            )}
+            {myConceptCount > 0 && (
+              <span style={S.metaItem}>
+                Concepts seen: <span style={S.metaValue}>{myConceptCount}</span>
+              </span>
+            )}
+          </>
+        ) : (
+          <>
+            <span style={S.metaItem}>
+              Group: <span style={S.metaValue}>{selectedGroup?.label}</span>
+            </span>
+            {nResponses !== null && (
+              <span style={S.metaItem}>
+                Respondents: <span style={S.metaValue}>{nResponses}</span>
+              </span>
+            )}
+            {hasRealData && computedAt && (
+              <span style={S.metaItem}>
+                Map computed: <span style={S.metaValue}>
+                  {new Date(computedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                </span>
+              </span>
+            )}
+            <span style={S.metaItem}>
+              Min. threshold: <span style={S.metaValue}>{MIN_RESPONDENTS} respondents</span>
+            </span>
+            {showSample && (
+              <span style={{ ...S.metaItem, color: "#b8880a" }}>
+                Source: <span style={{ color: "#b8880a" }}>simulated</span>
+              </span>
+            )}
+          </>
         )}
       </div>
 
-      <div style={S.callout}>
-        {hasRealData
-          ? "Maps are recomputed hourly from all submitted responses. Position is determined by classical MDS on the group's aggregate distance matrix. Axes have no inherent meaning — only relative distances matter."
-          : "Real maps are computed hourly once a group reaches the minimum respondent threshold. The simulated map above uses theoretically motivated distances; it shows what domain-level clustering might look like, not what it actually does."}
-      </div>
-
-      {(!nResponses || nResponses < 50) && (
-        <div style={{ marginTop: "1.5rem" }}>
-          <p style={{ fontSize: "0.72rem", color: "#555" }}>
-            The maps improve with more data. If you haven't taken the survey yet, your
-            responses will directly improve the maps for your demographic groups.
-          </p>
-          <button style={S.btnPrimary} onClick={() => navigate("/survey")}>
-            Take the survey →
-          </button>
+      {/* ── Callout / explanation ── */}
+      {selectedGroupId === "mine" ? (
+        <div style={S.callout}>
+          Your network shows only the pairs you've rated — no averages or imputation. Concepts
+          you rated as highly similar are pulled close together; dissimilar pairs are pushed apart.
+          The map grows and shifts as you rate more pairs.
         </div>
+      ) : (
+        <div style={S.callout}>
+          {hasRealData
+            ? "Maps are recomputed hourly from all submitted responses. Position is determined by classical MDS on the group's aggregate distance matrix. Axes have no inherent meaning — only relative distances matter."
+            : "Real maps are computed hourly once a group reaches the minimum respondent threshold. The simulated map above uses theoretically motivated distances; it shows what domain-level clustering might look like, not what it actually does."}
+        </div>
+      )}
+
+      {/* ── CTA ── */}
+      {selectedGroupId === "mine" ? (
+        sessionId && myResponses && myResponses.length > 0 ? (
+          <div style={{ marginTop: "1.5rem" }}>
+            <p style={{ fontSize: "0.72rem", color: "#555" }}>
+              Rate more pairs to fill in your network — each batch of 20 adds new concepts
+              and refines the positions of existing ones.
+            </p>
+            <button style={S.btnPrimary} onClick={() => navigate("/survey")}>
+              Continue rating →
+            </button>
+          </div>
+        ) : (
+          <div style={{ marginTop: "1.5rem" }}>
+            <p style={{ fontSize: "0.72rem", color: "#555" }}>
+              Your personal map appears here after your first survey session.
+            </p>
+            <button style={S.btnPrimary} onClick={() => navigate("/survey")}>
+              Take the survey →
+            </button>
+          </div>
+        )
+      ) : (
+        (!nResponses || nResponses < 50) && (
+          <div style={{ marginTop: "1.5rem" }}>
+            <p style={{ fontSize: "0.72rem", color: "#555" }}>
+              The maps improve with more data. If you haven't taken the survey yet, your
+              responses will directly improve the maps for your demographic groups.
+            </p>
+            <button style={S.btnPrimary} onClick={() => navigate("/survey")}>
+              Take the survey →
+            </button>
+          </div>
+        )
       )}
     </div>
   );
