@@ -40,16 +40,16 @@ const S = {
     minHeight: "calc(100vh - 120px)",
   },
   card: {
-    background: "rgba(255,255,255,0.025)",
-    border: "1px solid #1e1e22",
+    background: "#ffffff",
+    border: "1px solid #e0dbd3",
     borderRadius: "6px",
     maxWidth: "640px",
     width: "100%",
     padding: "3rem 2.5rem",
   },
   wideCard: {
-    background: "rgba(255,255,255,0.025)",
-    border: "1px solid #1e1e22",
+    background: "#ffffff",
+    border: "1px solid #e0dbd3",
     borderRadius: "6px",
     maxWidth: "760px",
     width: "100%",
@@ -58,7 +58,7 @@ const S = {
   label: {
     fontSize: "0.62rem",
     letterSpacing: "0.22em",
-    color: "#444",
+    color: "#888",
     textTransform: "uppercase",
     marginBottom: "1.2rem",
     display: "block",
@@ -67,19 +67,19 @@ const S = {
     fontFamily: "'Playfair Display', Georgia, serif",
     fontSize: "1.8rem",
     fontWeight: 400,
-    color: "#e8e4dc",
+    color: "#1a1a1e",
     marginBottom: "1.4rem",
     lineHeight: 1.2,
   },
   p: {
     fontSize: "0.8rem",
     lineHeight: 1.9,
-    color: "#888",
+    color: "#555",
     marginBottom: "1rem",
   },
   progressBar: {
     height: "2px",
-    background: "#1a1a1e",
+    background: "#e0dbd3",
     borderRadius: "1px",
     marginBottom: "2.5rem",
     overflow: "hidden",
@@ -100,8 +100,8 @@ const S = {
     marginBottom: "2.5rem",
   },
   conceptPill: (color) => ({
-    background: "rgba(255,255,255,0.04)",
-    border: `1px solid ${color}44`,
+    background: "rgba(0,0,0,0.02)",
+    border: `1px solid ${color}66`,
     borderRadius: "4px",
     padding: "1rem 1.8rem",
     fontSize: "1.25rem",
@@ -122,9 +122,9 @@ const S = {
     width: "50px",
     height: "50px",
     borderRadius: "50%",
-    border: selected ? "2px solid #e8e4dc" : "1px solid #333",
-    background: selected ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.03)",
-    color: selected ? "#e8e4dc" : "#555",
+    border: selected ? "2px solid #1a1a1e" : "1px solid #d0ccc4",
+    background: selected ? "rgba(0,0,0,0.08)" : "rgba(0,0,0,0.02)",
+    color: selected ? "#1a1a1e" : "#666",
     fontSize: "1rem",
     cursor: "pointer",
     transition: "all 0.15s ease",
@@ -138,7 +138,7 @@ const S = {
   ratingLabel: {
     width: "50px",
     fontSize: "0.56rem",
-    color: "#444",
+    color: "#888",
     textAlign: "center",
     lineHeight: 1.3,
   },
@@ -164,17 +164,17 @@ const S = {
     border: "1px solid",
     borderRadius: "3px",
     transition: "all 0.15s",
-    borderColor: selected ? "#7eb8d4" : "#2a2a30",
+    borderColor: selected ? "#7eb8d4" : "#d0ccc4",
     background: selected ? "rgba(126,184,212,0.12)" : "transparent",
-    color: selected ? "#7eb8d4" : "#555",
+    color: selected ? "#4a90b8" : "#555",
   }),
   textInput: {
     width: "100%",
     padding: "0.65rem 0.8rem",
-    background: "rgba(255,255,255,0.04)",
-    border: "1px solid #2a2a30",
+    background: "#ffffff",
+    border: "1px solid #d0ccc4",
     borderRadius: "3px",
-    color: "#c4c0b8",
+    color: "#1a1a1e",
     fontFamily: "inherit",
     fontSize: "0.8rem",
     marginBottom: "1.4rem",
@@ -199,7 +199,7 @@ const S = {
     textTransform: "uppercase",
     fontFamily: "inherit",
     cursor: "pointer",
-    border: "1px solid #2a2a30",
+    border: "1px solid #d0ccc4",
     borderRadius: "3px",
     background: "transparent",
     color: "#555",
@@ -216,13 +216,13 @@ const S = {
     justifyContent: "space-between",
     alignItems: "baseline",
     padding: "0.5rem 0",
-    borderBottom: "1px solid #1a1a1e",
+    borderBottom: "1px solid #e0dbd3",
     gap: "1rem",
   },
   insightConcepts: {
     fontSize: "0.8rem",
     fontFamily: "'Playfair Display', serif",
-    color: "#c8c4bc",
+    color: "#1a1a1e",
     flexShrink: 0,
   },
   insightRating: (val) => ({
@@ -237,7 +237,7 @@ const S = {
     flexWrap: "wrap",
     marginBottom: "2rem",
     paddingBottom: "1.5rem",
-    borderBottom: "1px solid #1a1a1e",
+    borderBottom: "1px solid #e0dbd3",
   },
   stat: {
     display: "flex",
@@ -247,13 +247,13 @@ const S = {
   statValue: {
     fontSize: "1.6rem",
     fontFamily: "'Playfair Display', serif",
-    color: "#d4d0c8",
+    color: "#1a1a1e",
     fontWeight: 400,
   },
   statLabel: {
     fontSize: "0.58rem",
     letterSpacing: "0.15em",
-    color: "#3a3a42",
+    color: "#888",
     textTransform: "uppercase",
   },
 };
@@ -272,13 +272,13 @@ function PrivacyNotice({ onAccept, alreadyCompleted }) {
 
               {alreadyCompleted && (
                       <div style={{
-                                background: "rgba(232,197,71,0.06)",
-                                          border: "1px solid #e8c54733",
+                                background: "rgba(184,136,10,0.06)",
+                                          border: "1px solid rgba(184,136,10,0.25)",
                                                     borderRadius: "4px",
                                                               padding: "0.9rem 1.1rem",
                                                                         marginBottom: "1.4rem",
                                                                                   fontSize: "0.72rem",
-                                                                                            color: "#e8c547",
+                                                                                            color: "#b8880a",
                                                                                                       lineHeight: 1.7,
                                                                                                               }}>
                                                                                                                         It looks like you've completed a session from this browser before. Your
@@ -298,7 +298,7 @@ function PrivacyNotice({ onAccept, alreadyCompleted }) {
         Demographic fields are entirely voluntary. Your data will only ever appear in
         aggregate — individual responses are never shown publicly.
       </p>
-      <p style={{ ...S.p, color: "#444", fontSize: "0.72rem" }}>
+      <p style={{ ...S.p, color: "#666", fontSize: "0.72rem" }}>
         By continuing, you consent to your anonymized responses being used for
         research and visualization purposes.
       </p>
@@ -349,7 +349,7 @@ function SurveyQuestion({ pair, onRate, ratedInBatch, batchSize, totalRated, tot
       <div style={{
         fontSize: "0.6rem",
         letterSpacing: "0.18em",
-        color: "#383840",
+        color: "#888",
         textTransform: "uppercase",
         textAlign: "center",
         marginBottom: "2rem",
@@ -388,7 +388,7 @@ function SurveyQuestion({ pair, onRate, ratedInBatch, batchSize, totalRated, tot
         justifyContent: "space-between",
         marginTop: "2rem",
         fontSize: "0.58rem",
-        color: "#2e2e36",
+        color: "#aaa",
         letterSpacing: "0.1em",
       }}>
         <span>{ratedInBatch} / {batchSize} in this batch</span>
@@ -543,8 +543,8 @@ function Checkpoint({ ratings, totalPairs, onContinue, onDone }) {
       {/* Personal MDS map */}
       {conceptsInSession.length >= 5 && (
         <div style={{
-          background: "rgba(255,255,255,0.018)",
-          border: "1px solid #1e1e22",
+          background: "rgba(0,0,0,0.02)",
+          border: "1px solid #e0dbd3",
           borderRadius: "4px",
           padding: "1rem",
           marginBottom: "2rem",
@@ -589,7 +589,7 @@ function Checkpoint({ ratings, totalPairs, onContinue, onDone }) {
         </div>
       )}
 
-      <p style={{ ...S.p, color: "#444", fontSize: "0.72rem" }}>
+      <p style={{ ...S.p, color: "#666", fontSize: "0.72rem" }}>
         Your responses have been saved anonymously.
         {hasMore
           ? " You can rate more pairs to improve matrix coverage — each additional response helps."

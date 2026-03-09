@@ -11,8 +11,8 @@ const S = {
     padding: "4rem 1.5rem",
   },
   card: {
-    background: "rgba(255,255,255,0.025)",
-    border: "1px solid #1e1e22",
+    background: "#ffffff",
+    border: "1px solid #e0dbd3",
     borderRadius: "6px",
     maxWidth: "660px",
     width: "100%",
@@ -22,7 +22,7 @@ const S = {
     fontFamily: "'Playfair Display', Georgia, serif",
     fontSize: "clamp(2rem, 5vw, 3rem)",
     fontWeight: 400,
-    color: "#e8e4dc",
+    color: "#1a1a1e",
     lineHeight: 1.15,
     marginBottom: "2rem",
     letterSpacing: "-0.01em",
@@ -30,15 +30,15 @@ const S = {
   p: {
     fontSize: "0.82rem",
     lineHeight: 1.9,
-    color: "#888",
+    color: "#555",
     marginBottom: "1rem",
   },
   highlight: {
-    color: "#e8c547",
+    color: "#b8880a",
     fontWeight: 400,
   },
   divider: {
-    borderTop: "1px solid #1e1e22",
+    borderTop: "1px solid #e0dbd3",
     margin: "2rem 0",
   },
   domainGrid: {
@@ -85,10 +85,10 @@ const S = {
     textTransform: "uppercase",
     fontFamily: "inherit",
     cursor: "pointer",
-    border: "1px solid #2a2a30",
+    border: "1px solid #d0ccc4",
     borderRadius: "3px",
     background: "transparent",
-    color: "#666",
+    color: "#555",
     transition: "all 0.2s",
   },
   meta: {
@@ -97,7 +97,7 @@ const S = {
     flexWrap: "wrap",
     marginTop: "2rem",
     paddingTop: "1.5rem",
-    borderTop: "1px solid #1a1a1e",
+    borderTop: "1px solid #e0dbd3",
   },
   metaItem: {
     display: "flex",
@@ -107,13 +107,13 @@ const S = {
   metaValue: {
     fontSize: "1.3rem",
     fontFamily: "'Playfair Display', serif",
-    color: "#d4d0c8",
+    color: "#1a1a1e",
     fontWeight: 400,
   },
   metaLabel: {
     fontSize: "0.6rem",
     letterSpacing: "0.15em",
-    color: "#444",
+    color: "#888",
     textTransform: "uppercase",
   },
 };
@@ -149,7 +149,7 @@ export default function Home() {
 
         <div style={S.divider} />
 
-        <div style={{ fontSize: "0.6rem", letterSpacing: "0.15em", color: "#444", textTransform: "uppercase", marginBottom: "0.8rem" }}>
+        <div style={{ fontSize: "0.6rem", letterSpacing: "0.15em", color: "#888", textTransform: "uppercase", marginBottom: "0.8rem" }}>
           63 concepts across 10 domains
         </div>
 

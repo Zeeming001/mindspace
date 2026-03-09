@@ -41,7 +41,7 @@ for (const domain of DOMAINS) {
   }
 }
 
-// Generate all 1,953 unique pairs (deterministic order)
+// Generate all unique pairs (deterministic order)
 export function getAllPairs() {
   const pairs = [];
   for (let i = 0; i < CONCEPTS.length; i++) {
@@ -49,7 +49,7 @@ export function getAllPairs() {
       pairs.push([CONCEPTS[i], CONCEPTS[j]]);
     }
   }
-  return pairs; // 63*62/2 = 1953 pairs
+  return pairs;
 }
 
 // Seeded shuffle using a numeric seed (mulberry32)
@@ -65,7 +65,7 @@ function mulberry32(seed) {
 // Survey pacing constants
 export const FIRST_BATCH_SIZE = 20;     // pairs before demographics checkpoint
 export const CONTINUED_BATCH_SIZE = 20; // pairs per subsequent batch
-export const TOTAL_PAIRS = 1953;        // 63 * 62 / 2
+export const TOTAL_PAIRS = CONCEPTS.length * (CONCEPTS.length - 1) / 2;
 
 /**
  * Returns ALL 1,953 pairs in a deterministic random order unique to this

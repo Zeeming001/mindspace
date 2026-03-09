@@ -208,7 +208,7 @@ export default function MDSPlot({
           gap: "0.8rem 1.5rem",
           marginTop: "1rem",
           padding: "0.75rem",
-          borderTop: "1px solid #1a1a1e",
+          borderTop: "1px solid #e0dbd3",
         }}>
           {DOMAINS.map(d => (
             <div key={d.id} style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>

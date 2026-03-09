@@ -19,14 +19,14 @@ function NavBar() {
       alignItems: "center",
       justifyContent: "space-between",
       padding: "1.2rem 2.5rem",
-      borderBottom: "1px solid #1e1e22",
+      borderBottom: "1px solid #e0dbd3",
       position: "sticky",
       top: 0,
       zIndex: 100,
-      background: "rgba(13,13,15,0.96)",
+      background: "rgba(248,247,244,0.96)",
       backdropFilter: "blur(8px)",
     }}>
-      <NavLink to="/" style={{ fontSize: "0.7rem", letterSpacing: "0.35em", color: "#555", textTransform: "uppercase" }}>
+      <NavLink to="/" style={{ fontSize: "0.7rem", letterSpacing: "0.35em", color: "#888", textTransform: "uppercase" }}>
         Mindspace
       </NavLink>
       <div style={{ display: "flex", gap: "2rem" }}>
@@ -38,11 +38,11 @@ function NavBar() {
             style={({ isActive }) => ({
               fontSize: "0.65rem",
               letterSpacing: "0.2em",
-              color: isActive ? "#d4d0c8" : "#555",
+              color: isActive ? "#1a1a1e" : "#888",
               textTransform: "uppercase",
               border: "none",
               background: "none",
-              borderBottom: isActive ? "1px solid #d4d0c8" : "1px solid transparent",
+              borderBottom: isActive ? "1px solid #1a1a1e" : "1px solid transparent",
               paddingBottom: "2px",
               transition: "color 0.2s, border-color 0.2s",
             })}
@@ -59,9 +59,9 @@ function Footer() {
   return (
     <footer style={{
       padding: "1rem 2.5rem",
-      borderTop: "1px solid #1a1a1e",
+      borderTop: "1px solid #e0dbd3",
       fontSize: "0.58rem",
-      color: "#2e2e36",
+      color: "#aaa",
       letterSpacing: "0.1em",
       display: "flex",
       justifyContent: "space-between",
