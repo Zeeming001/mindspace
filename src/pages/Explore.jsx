@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { GROUPS } from "../lib/concepts";
+import { CONCEPTS, GROUPS } from "../lib/concepts";
+
+const MDS_THRESHOLD = 40; // mirror Survey.jsx / Results.jsx
 import { fetchGroupPositions, fetchGroupCounts, fetchSessionResponses, MIN_RESPONDENTS } from "../lib/supabase";
 import { SAMPLE_POSITIONS } from "../lib/samplePositions";
 import MDSPlot from "../components/MDSPlot";
@@ -291,16 +293,33 @@ export default function Explore() {
               No responses found for your session. If you've taken the survey,
               try refreshing — or continue rating to add more data.
             </div>
-          ) : (
-            <ErrorBoundary label="personal map">
-              <ForceGraph
-                responses={myResponses}
-                width={Math.max(plotWidth - 48, 280)}
-                height={Math.round(Math.max(plotWidth - 48, 280) * 0.74)}
-                showLegend={true}
-              />
-            </ErrorBoundary>
-          )
+          ) : (() => {
+            const useMDS = myResponses.length >= MDS_THRESHOLD;
+            const ratedConcepts = CONCEPTS.filter(c =>
+              myResponses.some(r => r.concept_a === c || r.concept_b === c)
+            );
+            const w = Math.max(plotWidth - 48, 280);
+            return (
+              <ErrorBoundary label="personal map">
+                {useMDS ? (
+                  <MDSPlot
+                    responses={myResponses}
+                    concepts={ratedConcepts}
+                    width={w}
+                    height={Math.round(w * 0.75)}
+                    showLegend={true}
+                  />
+                ) : (
+                  <ForceGraph
+                    responses={myResponses}
+                    width={w}
+                    height={Math.round(w * 0.74)}
+                    showLegend={true}
+                  />
+                )}
+              </ErrorBoundary>
+            );
+          })()
 
         ) : (
 
@@ -393,9 +412,9 @@ export default function Explore() {
       {/* ── Callout / explanation ── */}
       {selectedGroupId === "mine" ? (
         <div style={S.callout}>
-          Your network shows only the pairs you've rated — no averages or imputation. Concepts
-          you rated as highly similar are pulled close together; dissimilar pairs are pushed apart.
-          The map grows and shifts as you rate more pairs.
+          {myResponses && myResponses.length >= MDS_THRESHOLD
+            ? "Your map uses classical MDS — spatial distance directly reflects how similar you rated each pair of concepts. The layout is computed from your personal distance matrix, with unrated pairs treated as neutral."
+            : "Your network shows only the pairs you've rated — no averages or imputation. Concepts you rated as highly similar are pulled close together; dissimilar pairs are pushed apart. Rate 40+ pairs to unlock the full MDS spatial map."}
         </div>
       ) : (
         <div style={S.callout}>
