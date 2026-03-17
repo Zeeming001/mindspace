@@ -83,6 +83,14 @@ CREATE POLICY "anon can insert responses"
   ON responses FOR INSERT TO anon
   WITH CHECK (true);
 
+-- Anon users: read responses by session ID.
+-- Responses contain no PII (only concept names + ratings + a random UUID).
+-- Session UUIDs are 128-bit random values and unguessable, so allowing SELECT
+-- is safe and required for the /results shareable-link page to work.
+CREATE POLICY "anon can read responses"
+  ON responses FOR SELECT TO anon
+  USING (true);
+
 -- Anon users: insert/update their own session
 CREATE POLICY "anon can upsert sessions"
   ON sessions FOR INSERT TO anon

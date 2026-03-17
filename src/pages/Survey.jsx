@@ -203,7 +203,9 @@ const S = {
     fontSize: "0.8rem",
     fontFamily: "'Playfair Display', serif",
     color: "#1a1a1e",
-    flexShrink: 0,
+    flex: 1,
+    minWidth: 0,
+    wordBreak: "break-word",
   },
   insightRating: (val) => ({
     fontSize: "0.62rem",
@@ -513,6 +515,9 @@ function Checkpoint({ ratings, totalPairs, sessionId, onContinue, onDone }) {
   const conceptsInSession = [...new Set(ratings.flatMap(r => r.pair))];
   const pct = Math.round((ratings.length / totalPairs) * 100);
 
+  // Stack the two insight columns on narrow screens
+  const pairsColumns = graphWidth < 500 ? "1fr" : "1fr 1fr";
+
   const shareUrl = `${window.location.origin}/results?s=${sessionId}`;
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareUrl).then(() => {
@@ -569,7 +574,7 @@ function Checkpoint({ ratings, totalPairs, sessionId, onContinue, onDone }) {
 
       {/* Top similar / different pairs */}
       {ratings.length >= 5 && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", marginBottom: "2rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: pairsColumns, gap: "1.5rem", marginBottom: "2rem" }}>
           <div>
             <div style={{ fontSize: "0.58rem", letterSpacing: "0.15em", color: "#a8d4a0", textTransform: "uppercase", marginBottom: "0.6rem" }}>
               Your closest pairs
