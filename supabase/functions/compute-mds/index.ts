@@ -120,13 +120,6 @@ Deno.serve(async (_req) => {
 
   // ── Define groups ────────────────────────────────────────────────────
 
-  const getSessionIds = async (where: string): Promise<string[]> => {
-    const { data, error } = await sb.rpc("get_session_ids", { where_clause: where });
-    if (error) throw error;
-    return (data as Array<{ session_id: string }>).map(r => r.session_id);
-  };
-
-  // Simpler: use direct queries via the JS client
   const fetchSessionIds = async (
     field: string | null,
     values: (number | string)[] | null

@@ -5,6 +5,8 @@ import Home from "./pages/Home";
 import Survey from "./pages/Survey";
 import Explore from "./pages/Explore";
 import About from "./pages/About";
+import Results from "./pages/Results";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 const NAV_LINKS = [
   { to: "/",        label: "Home" },
@@ -81,12 +83,15 @@ export default function App() {
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <NavBar />
         <main style={{ flex: 1 }}>
-          <Routes>
-            <Route path="/"        element={<Home />} />
-            <Route path="/survey"  element={<Survey />} />
-            <Route path="/explore" element={<Explore />} />
-            <Route path="/about"   element={<About />} />
-          </Routes>
+          <ErrorBoundary>
+            <Routes>
+              <Route path="/"        element={<Home />} />
+              <Route path="/survey"  element={<Survey />} />
+              <Route path="/explore" element={<Explore />} />
+              <Route path="/about"   element={<About />} />
+              <Route path="/results" element={<Results />} />
+            </Routes>
+          </ErrorBoundary>
         </main>
         <Footer />
       </div>

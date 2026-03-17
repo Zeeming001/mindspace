@@ -13,12 +13,16 @@
  *   - Personal concept network (force-directed graph) is rendered from ratings accumulated so far
  */
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import { CONCEPT_COLOR, getAllPairsForSession, FIRST_BATCH_SIZE, CONTINUED_BATCH_SIZE, TOTAL_PAIRS } from "../lib/concepts";
 import { claimSessionIndex, createSession, saveResponses, saveSession } from "../lib/supabase";
+import { LS_SESSION_KEY, LS_COMPLETED_KEY } from "../lib/session";
+import { btnPrimary, btnSecondary } from "../styles/buttons";
+import { useContainerWidth } from "../lib/hooks";
 import ForceGraph from "../components/ForceGraph";
+import ErrorBoundary from "../components/ErrorBoundary";
 
 // ─── Phases ──────────────────────────────────────────────────────────────────
 
@@ -179,32 +183,8 @@ const S = {
     fontSize: "0.8rem",
     marginBottom: "1.4rem",
   },
-  btnPrimary: {
-    padding: "0.8rem 2rem",
-    fontSize: "0.68rem",
-    letterSpacing: "0.2em",
-    textTransform: "uppercase",
-    fontFamily: "inherit",
-    cursor: "pointer",
-    border: "1px solid #e8c547",
-    borderRadius: "3px",
-    background: "#e8c547",
-    color: "#0d0d0f",
-    transition: "opacity 0.2s",
-  },
-  btnSecondary: {
-    padding: "0.8rem 2rem",
-    fontSize: "0.68rem",
-    letterSpacing: "0.2em",
-    textTransform: "uppercase",
-    fontFamily: "inherit",
-    cursor: "pointer",
-    border: "1px solid #d0ccc4",
-    borderRadius: "3px",
-    background: "transparent",
-    color: "#555",
-    transition: "all 0.2s",
-  },
+  btnPrimary,
+  btnSecondary,
   btnRow: {
     display: "flex",
     gap: "1rem",
@@ -326,12 +306,22 @@ function SurveyQuestion({ pair, onRate, ratedInBatch, batchSize, totalRated, tot
     }
   }, [pair]);
 
-  const handleSelect = (val) => {
+  const handleSelect = useCallback((val) => {
     if (fading) return;
     setSelected(val);
     setFading(true);
     setTimeout(() => onRate(val), 280);
-  };
+  }, [fading, onRate]);
+
+  // Keyboard shortcut: press 1–5 to rate
+  useEffect(() => {
+    const handler = (e) => {
+      const n = parseInt(e.key);
+      if (n >= 1 && n <= 5) handleSelect(n);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [handleSelect]);
 
   // Progress = fraction of current batch completed
   const batchProgress = ratedInBatch / batchSize;
@@ -382,10 +372,14 @@ function SurveyQuestion({ pair, onRate, ratedInBatch, batchSize, totalRated, tot
         ))}
       </div>
 
+      <div style={{ textAlign: "center", marginTop: "0.9rem", fontSize: "0.52rem", color: "#bbb", letterSpacing: "0.12em" }}>
+        Keyboard: press 1 – 5
+      </div>
+
       <div style={{
         display: "flex",
         justifyContent: "space-between",
-        marginTop: "2rem",
+        marginTop: "1.2rem",
         fontSize: "0.58rem",
         color: "#aaa",
         letterSpacing: "0.1em",
@@ -503,9 +497,11 @@ function DemographicsForm({ onSubmit, onSkip }) {
 
 // ─── Checkpoint / Results ─────────────────────────────────────────────────────
 
-function Checkpoint({ ratings, totalPairs, onContinue, onDone }) {
+function Checkpoint({ ratings, totalPairs, sessionId, onContinue, onDone }) {
   const navigate = useNavigate();
   const hasMore = ratings.length < totalPairs;
+  const [copied, setCopied] = useState(false);
+  const [graphContainerRef, graphWidth] = useContainerWidth(660);
 
   const sorted = [...ratings].sort((a, b) => b.val - a.val);
   const mostSimilar   = sorted.slice(0, 5);
@@ -516,6 +512,14 @@ function Checkpoint({ ratings, totalPairs, onContinue, onDone }) {
   }));
   const conceptsInSession = [...new Set(ratings.flatMap(r => r.pair))];
   const pct = Math.round((ratings.length / totalPairs) * 100);
+
+  const shareUrl = `${window.location.origin}/results?s=${sessionId}`;
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2200);
+    });
+  };
 
   return (
     <div style={S.wideCard}>
@@ -539,23 +543,27 @@ function Checkpoint({ ratings, totalPairs, onContinue, onDone }) {
         ))}
       </div>
 
-      {/* Personal MDS map */}
+      {/* Personal concept map */}
       {conceptsInSession.length >= 5 && (
-        <div style={{
-          background: "rgba(0,0,0,0.02)",
-          border: "1px solid #e0dbd3",
-          borderRadius: "4px",
-          padding: "1rem",
-          marginBottom: "2rem",
-          overflowX: "auto",
-        }}>
-          <ForceGraph
-            responses={responses}
-            width={680}
-            height={420}
-            showLegend={true}
-            label={`Your concept network — ${conceptsInSession.length} concepts`}
-          />
+        <div
+          ref={graphContainerRef}
+          style={{
+            background: "rgba(0,0,0,0.02)",
+            border: "1px solid #e0dbd3",
+            borderRadius: "4px",
+            padding: "1rem",
+            marginBottom: "2rem",
+          }}
+        >
+          <ErrorBoundary label="concept map">
+            <ForceGraph
+              responses={responses}
+              width={Math.max(graphWidth - 32, 280)}
+              height={Math.round(Math.max(graphWidth - 32, 280) * 0.62)}
+              showLegend={true}
+              label={`Your concept network — ${conceptsInSession.length} concepts`}
+            />
+          </ErrorBoundary>
         </div>
       )}
 
@@ -600,12 +608,21 @@ function Checkpoint({ ratings, totalPairs, onContinue, onDone }) {
             Rate {CONTINUED_BATCH_SIZE} more pairs →
           </button>
         )}
+        <button style={S.btnSecondary} onClick={() => navigate("/results")}>
+          View your full map →
+        </button>
         <button style={S.btnSecondary} onClick={() => navigate("/explore")}>
           Explore all groups
         </button>
+        <button
+          style={{ ...S.btnSecondary, fontSize: "0.6rem" }}
+          onClick={handleCopyLink}
+        >
+          {copied ? "Link copied ✓" : "Share your map"}
+        </button>
         {hasMore && (
-          <button style={{ ...S.btnSecondary, fontSize: "0.6rem" }} onClick={onDone}>
-            I'm done for now
+          <button style={{ ...S.btnSecondary, fontSize: "0.6rem" }} onClick={() => navigate("/results")}>
+            I'm done for now →
           </button>
         )}
       </div>
@@ -618,28 +635,25 @@ function Checkpoint({ ratings, totalPairs, onContinue, onDone }) {
 // submit unlimited duplicate surveys. On refresh the same session resumes;
 // only a localStorage clear or a different browser yields a new session.
 
-const LS_SESSION_KEY    = "mindspace_session_id";
-const LS_COMPLETED_KEY  = "mindspace_completed";
-
 function getOrCreateSessionId() {
   try {
-      const stored = localStorage.getItem(LS_SESSION_KEY);
-          if (stored) return stored;
-              const fresh = uuidv4();
-                  localStorage.setItem(LS_SESSION_KEY, fresh);
-                      return fresh;
-                        } catch {
-                            return uuidv4(); // storage blocked (private mode etc.) — fall back gracefully
-                              }
-                              }
+    const stored = localStorage.getItem(LS_SESSION_KEY);
+    if (stored) return stored;
+    const fresh = uuidv4();
+    localStorage.setItem(LS_SESSION_KEY, fresh);
+    return fresh;
+  } catch {
+    return uuidv4(); // storage blocked (private mode etc.) — fall back gracefully
+  }
+}
 
-                              function markSessionCompleted() {
-                                try { localStorage.setItem(LS_COMPLETED_KEY, "1"); } catch {}
-                                }
+function markSessionCompleted() {
+  try { localStorage.setItem(LS_COMPLETED_KEY, "1"); } catch {}
+}
 
-                                function hasCompletedBefore() {
-                                  try { return !!localStorage.getItem(LS_COMPLETED_KEY); } catch { return false; }
-                                  }
+function hasCompletedBefore() {
+  try { return !!localStorage.getItem(LS_COMPLETED_KEY); } catch { return false; }
+}
 
 // ─── Main Survey Page ─────────────────────────────────────────────────────────
 
@@ -795,8 +809,9 @@ export default function Survey() {
         <Checkpoint
           ratings={ratings}
           totalPairs={allPairs.length}
+          sessionId={sessionId}
           onContinue={handleContinue}
-          onDone={() => {}} // stays on checkpoint; Explore button handles exit
+          onDone={() => {}}
         />
       )}
     </div>

@@ -113,6 +113,18 @@ export async function fetchSessionResponses(sessionId) {
   return data || [];
 }
 
+/**
+ * Count completed sessions (for the live respondent counter on the Home page).
+ */
+export async function fetchRespondentCount() {
+  const { count, error } = await supabase
+    .from("sessions")
+    .select("*", { count: "exact", head: true })
+    .not("completed_at", "is", null);
+  if (error) throw error;
+  return count ?? 0;
+}
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 export const MIN_RESPONDENTS = 15; // minimum before showing a group's map

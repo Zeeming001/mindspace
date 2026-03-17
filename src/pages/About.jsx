@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { CONCEPTS, DOMAINS, TOTAL_PAIRS } from "../lib/concepts";
+import { btnSecondarySmall } from "../styles/buttons";
 
 const S = {
   page: {
@@ -72,21 +73,7 @@ const S = {
     fontSize: "0.78rem",
     alignSelf: "center",
   },
-  btnSecondary: {
-    display: "inline-block",
-    padding: "0.65rem 1.5rem",
-    fontSize: "0.65rem",
-    letterSpacing: "0.18em",
-    textTransform: "uppercase",
-    fontFamily: "inherit",
-    cursor: "pointer",
-    border: "1px solid #d0ccc4",
-    borderRadius: "3px",
-    background: "transparent",
-    color: "#555",
-    transition: "all 0.2s",
-    marginTop: "1rem",
-  },
+  btnSecondary: { ...btnSecondarySmall, marginTop: "1rem" },
 };
 
 export default function About() {

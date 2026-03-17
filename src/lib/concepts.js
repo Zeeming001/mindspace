@@ -24,7 +24,7 @@ export const CONCEPTS_BY_DOMAIN = {
   identity:   ["Kind", "Honest", "Ambitious", "Humble", "Hardworking", "Believes in luck"],
 };
 
-// Flat array of all 63 concepts
+// Flat array of all 61 concepts
 export const CONCEPTS = Object.values(CONCEPTS_BY_DOMAIN).flat();
 
 // Map: concept name -> domain id

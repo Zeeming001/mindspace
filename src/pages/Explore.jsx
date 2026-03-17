@@ -5,9 +5,10 @@ import { fetchGroupPositions, fetchGroupCounts, fetchSessionResponses, MIN_RESPO
 import { SAMPLE_POSITIONS } from "../lib/samplePositions";
 import MDSPlot from "../components/MDSPlot";
 import ForceGraph from "../components/ForceGraph";
-
-// LocalStorage key — must match Survey.jsx
-const LS_SESSION_KEY = "mindspace_session_id";
+import ErrorBoundary from "../components/ErrorBoundary";
+import { LS_SESSION_KEY } from "../lib/session";
+import { btnPrimarySmall } from "../styles/buttons";
+import { useContainerWidth } from "../lib/hooks";
 
 const S = {
   page: {
@@ -139,21 +140,7 @@ const S = {
     lineHeight: 1.8,
     marginTop: "1.5rem",
   },
-  btnPrimary: {
-    display: "inline-block",
-    padding: "0.65rem 1.5rem",
-    fontSize: "0.65rem",
-    letterSpacing: "0.18em",
-    textTransform: "uppercase",
-    fontFamily: "inherit",
-    cursor: "pointer",
-    border: "1px solid #e8c547",
-    borderRadius: "3px",
-    background: "#e8c547",
-    color: "#0d0d0f",
-    transition: "all 0.2s",
-    marginTop: "1rem",
-  },
+  btnPrimary: { ...btnPrimarySmall, marginTop: "1rem" },
 };
 
 export default function Explore() {
@@ -168,6 +155,7 @@ export default function Explore() {
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState(null);
   const [computedAt,  setComputedAt]  = useState(null);
+  const [plotContainerRef, plotWidth] = useContainerWidth(700);
 
   // ── Personal map state ──────────────────────────────────────────────────────
   const [sessionId] = useState(() => {
@@ -279,7 +267,7 @@ export default function Explore() {
       </div>
 
       {/* ── Plot area ── */}
-      <div style={S.plotContainer}>
+      <div ref={plotContainerRef} style={S.plotContainer}>
         {selectedGroupId === "mine" ? (
 
           // ── Personal map ──────────────────────────────────────────────────
@@ -304,12 +292,14 @@ export default function Explore() {
               try refreshing — or continue rating to add more data.
             </div>
           ) : (
-            <ForceGraph
-              responses={myResponses}
-              width={700}
-              height={520}
-              showLegend={true}
-            />
+            <ErrorBoundary label="personal map">
+              <ForceGraph
+                responses={myResponses}
+                width={Math.max(plotWidth - 48, 280)}
+                height={Math.round(Math.max(plotWidth - 48, 280) * 0.74)}
+                showLegend={true}
+              />
+            </ErrorBoundary>
           )
 
         ) : (
@@ -339,13 +329,15 @@ export default function Explore() {
                   </span>
                 </div>
               )}
-              <MDSPlot
-                positions={displayPositions}
-                loading={loading && !showSample}
-                width={700}
-                height={520}
-                showLegend={true}
-              />
+              <ErrorBoundary label="concept map">
+                <MDSPlot
+                  positions={displayPositions}
+                  loading={loading && !showSample}
+                  width={Math.max(plotWidth - 48, 280)}
+                  height={Math.round(Math.max(plotWidth - 48, 280) * 0.74)}
+                  showLegend={true}
+                />
+              </ErrorBoundary>
             </div>
           )
         )}

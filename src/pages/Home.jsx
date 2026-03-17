@@ -1,5 +1,8 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { DOMAINS, CONCEPTS, TOTAL_PAIRS } from "../lib/concepts";
+import { fetchRespondentCount } from "../lib/supabase";
+import { btnPrimary, btnSecondary } from "../styles/buttons";
 
 const S = {
   page: {
@@ -63,34 +66,8 @@ const S = {
     flexWrap: "wrap",
     marginTop: "2rem",
   },
-  btnPrimary: {
-    display: "inline-block",
-    padding: "0.8rem 2rem",
-    fontSize: "0.68rem",
-    letterSpacing: "0.2em",
-    textTransform: "uppercase",
-    fontFamily: "inherit",
-    cursor: "pointer",
-    border: "1px solid #e8c547",
-    borderRadius: "3px",
-    background: "#e8c547",
-    color: "#0d0d0f",
-    transition: "all 0.2s",
-  },
-  btnSecondary: {
-    display: "inline-block",
-    padding: "0.8rem 2rem",
-    fontSize: "0.68rem",
-    letterSpacing: "0.2em",
-    textTransform: "uppercase",
-    fontFamily: "inherit",
-    cursor: "pointer",
-    border: "1px solid #d0ccc4",
-    borderRadius: "3px",
-    background: "transparent",
-    color: "#555",
-    transition: "all 0.2s",
-  },
+  btnPrimary,
+  btnSecondary,
   meta: {
     display: "flex",
     gap: "2rem",
@@ -116,10 +93,34 @@ const S = {
     color: "#888",
     textTransform: "uppercase",
   },
+  respondentBadge: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "0.4rem",
+    fontSize: "0.6rem",
+    letterSpacing: "0.12em",
+    color: "#888",
+    textTransform: "uppercase",
+    marginBottom: "1.5rem",
+  },
+  respondentDot: {
+    width: 6,
+    height: 6,
+    borderRadius: "50%",
+    background: "#a8d4a0",
+    flexShrink: 0,
+  },
 };
 
 export default function Home() {
   const navigate = useNavigate();
+  const [respondentCount, setRespondentCount] = useState(null);
+
+  useEffect(() => {
+    fetchRespondentCount()
+      .then(n => setRespondentCount(n))
+      .catch(() => {}); // silently ignore if DB unavailable
+  }, []);
 
   return (
     <div style={S.page}>
@@ -143,11 +144,18 @@ export default function Home() {
         </p>
 
         <p style={S.p}>
-          You'll rate the similarity of 60 concept pairs. Afterward, you'll see
-          how your mind organized them — and how it compares to other groups.
+          You'll rate 20 concept pairs. Afterward, you'll see how your mind
+          organized them — and how it compares to other groups.
         </p>
 
         <div style={S.divider} />
+
+        {respondentCount !== null && respondentCount > 0 && (
+          <div style={S.respondentBadge}>
+            <div style={S.respondentDot} />
+            {respondentCount.toLocaleString()} {respondentCount === 1 ? "person has" : "people have"} contributed their mindspace
+          </div>
+        )}
 
         <div style={{ fontSize: "0.6rem", letterSpacing: "0.15em", color: "#888", textTransform: "uppercase", marginBottom: "0.8rem" }}>
           {CONCEPTS.length} concepts across {DOMAINS.length} domains
@@ -170,10 +178,10 @@ export default function Home() {
 
         <div style={S.meta}>
           {[
-            { value: CONCEPTS.length,                               label: "Concepts" },
-            { value: TOTAL_PAIRS.toLocaleString(),                  label: "Total pairs" },
-            { value: "20+",                                         label: "Pairs per session" },
-            { value: "~3 min",                                      label: "Minimum time" },
+            { value: CONCEPTS.length,              label: "Concepts" },
+            { value: TOTAL_PAIRS.toLocaleString(),  label: "Total pairs" },
+            { value: "20+",                         label: "Pairs per session" },
+            { value: "~3 min",                      label: "Minimum time" },
           ].map(({ value, label }) => (
             <div key={label} style={S.metaItem}>
               <span style={S.metaValue}>{value}</span>
