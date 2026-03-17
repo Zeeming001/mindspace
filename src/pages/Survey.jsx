@@ -17,7 +17,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import { CONCEPT_COLOR, getAllPairsForSession, FIRST_BATCH_SIZE, CONTINUED_BATCH_SIZE, TOTAL_PAIRS } from "../lib/concepts";
-import { claimSessionIndex, createSession, saveResponses, saveSession } from "../lib/supabase";
+import { claimSessionIndex, createSession, saveResponses, saveSession, fetchSessionResponses } from "../lib/supabase";
 import { LS_SESSION_KEY, LS_COMPLETED_KEY } from "../lib/session";
 import { btnPrimary, btnSecondary } from "../styles/buttons";
 import { useContainerWidth } from "../lib/hooks";
@@ -680,7 +680,22 @@ export default function Survey() {
       const idx = await claimSessionIndex();
       const pairs = getAllPairsForSession(idx);
       setAllPairs(pairs);
-      await createSession(sessionId);
+      await createSession(sessionId); // no-op for returning users (duplicate key silently ignored)
+
+      // Load any previously saved responses so the checkpoint graph and
+      // stats reflect the user's full history, not just the current visit.
+      try {
+        const existing = await fetchSessionResponses(sessionId);
+        if (existing.length > 0) {
+          setRatings(existing.map(r => ({
+            pair: [r.concept_a, r.concept_b],
+            val: r.rating,
+          })));
+        }
+      } catch {
+        // Not critical — graph will just start from the current visit only.
+      }
+
       setBatchStart(0);
       setBatchSize(FIRST_BATCH_SIZE);
       setPairIdx(0);
