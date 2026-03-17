@@ -21,7 +21,7 @@ const REPULSION  = 2200;   // node-to-node repulsion strength
 const STIFFNESS  = 0.055;  // spring stiffness along edges
 const GRAVITY    = 0.022;  // pull toward canvas centre
 const DAMPING    = 0.86;   // velocity damping each tick (lower = faster settling)
-const MAX_TICKS  = 280;    // stop animating after this many frames
+const MAX_TICKS  = 400;    // max iterations for synchronous pre-settlement
 
 // Rest length: how far apart two connected nodes "want" to be.
 // rating 5 (very likely similar) → 55px apart
@@ -49,11 +49,9 @@ export default function ForceGraph({
   const [showLabels, setShowLabels] = useState(false);
   const [positions,  setPositions]  = useState(null);
 
-  const svgRef       = useRef(null);
-  const dragRef      = useRef(null);   // { i, dx, dy } while dragging
-  const simRef       = useRef(null);   // mutable simulation state
-  const animRef      = useRef(null);   // rAF handle
-  const tickRef      = useRef(0);
+  const svgRef  = useRef(null);
+  const dragRef = useRef(null);  // { i, dx, dy } while dragging
+  const simRef  = useRef(null);  // mutable simulation state (used by drag)
 
   // ── Derive nodes and edges from responses ────────────────────────────────
   const { nodes, edges } = useMemo(() => {
@@ -79,7 +77,11 @@ export default function ForceGraph({
     return { nodes, edges };
   }, [responses]);
 
-  // ── Initialise and animate simulation ────────────────────────────────────
+  // ── Run simulation synchronously, then render settled positions ──────────
+  // Running frame-by-frame inside requestAnimationFrame made nodes visibly
+  // fly around for several seconds ("funky") before settling. Running the
+  // physics loop synchronously to convergence and setting positions once
+  // gives an instant, clean layout.
   useEffect(() => {
     if (nodes.length < 3) return;
 
@@ -88,18 +90,15 @@ export default function ForceGraph({
     const cy = height / 2;
     const r0 = Math.min(width, height) * 0.28;
 
-    // Initialise on a circle with tiny jitter so power iteration converges
+    // Initialise on a circle with tiny jitter
     const pos = nodes.map((_, i) => ({
       x: cx + r0 * Math.cos((2 * Math.PI * i) / n) + (i % 3 - 1) * 4,
       y: cy + r0 * Math.sin((2 * Math.PI * i) / n) + (i % 2 - 0.5) * 4,
     }));
     const vel = nodes.map(() => ({ x: 0, y: 0 }));
 
-    simRef.current = { pos, vel, n, cx, cy };
-    tickRef.current = 0;
-
-    function tick() {
-      const { pos, vel, n, cx, cy } = simRef.current;
+    // Run synchronously to convergence
+    for (let tick = 0; tick < MAX_TICKS; tick++) {
       const f = Array.from({ length: n }, () => ({ x: 0, y: 0 }));
 
       // Repulsion between every pair of nodes
@@ -137,7 +136,6 @@ export default function ForceGraph({
       // Integrate velocities and positions
       let maxV = 0;
       for (let a = 0; a < n; a++) {
-        if (dragRef.current?.i === a) continue;   // freeze dragged node
         vel[a].x = (vel[a].x + f[a].x) * DAMPING;
         vel[a].y = (vel[a].y + f[a].y) * DAMPING;
         pos[a].x = Math.max(40, Math.min(width  - 40, pos[a].x + vel[a].x));
@@ -145,17 +143,11 @@ export default function ForceGraph({
         maxV = Math.max(maxV, Math.abs(vel[a].x) + Math.abs(vel[a].y));
       }
 
-      setPositions([...pos]);
-      tickRef.current++;
-
-      // Continue until converged or max ticks reached
-      if (tickRef.current < MAX_TICKS && maxV > 0.08) {
-        animRef.current = requestAnimationFrame(tick);
-      }
+      if (maxV < 0.08) break; // converged early
     }
 
-    animRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(animRef.current);
+    simRef.current = { pos, vel, n, cx, cy };
+    setPositions([...pos]);
   }, [nodes, edges, width, height]);
 
   // ── Drag interaction ──────────────────────────────────────────────────────
