@@ -6,6 +6,7 @@ import Survey from "./pages/Survey";
 import Explore from "./pages/Explore";
 import About from "./pages/About";
 import Results from "./pages/Results";
+import Admin from "./pages/Admin";
 import ErrorBoundary from "./components/ErrorBoundary";
 
 const NAV_LINKS = [
@@ -90,6 +91,7 @@ export default function App() {
               <Route path="/explore" element={<Explore />} />
               <Route path="/about"   element={<About />} />
               <Route path="/results" element={<Results />} />
+              <Route path="/admin"   element={<Admin />} />
             </Routes>
           </ErrorBoundary>
         </main>

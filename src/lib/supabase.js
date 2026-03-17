@@ -125,6 +125,29 @@ export async function fetchRespondentCount() {
   return count ?? 0;
 }
 
+// ─── Admin export ────────────────────────────────────────────────────────────
+// These call SECURITY DEFINER functions that validate the admin token
+// server-side before returning any data. The service role key never
+// leaves Supabase infrastructure.
+
+export async function exportFullData(token) {
+  const { data, error } = await supabase.rpc("export_full_data", { token });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function exportSessionsData(token) {
+  const { data, error } = await supabase.rpc("export_sessions_data", { token });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function exportPairCoverage(token) {
+  const { data, error } = await supabase.rpc("export_pair_coverage", { token });
+  if (error) throw error;
+  return data || [];
+}
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 export const MIN_RESPONDENTS = 15; // minimum before showing a group's map
