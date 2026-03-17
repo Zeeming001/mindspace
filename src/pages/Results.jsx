@@ -10,11 +10,16 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { fetchSessionResponses } from "../lib/supabase";
+import { CONCEPTS } from "../lib/concepts";
 import { LS_SESSION_KEY } from "../lib/session";
 import { btnPrimary, btnSecondary } from "../styles/buttons";
 import { useContainerWidth } from "../lib/hooks";
 import ForceGraph from "../components/ForceGraph";
+import MDSPlot from "../components/MDSPlot";
 import ErrorBoundary from "../components/ErrorBoundary";
+
+// Mirror the same threshold used in the Survey checkpoint.
+const MDS_THRESHOLD = 40;
 
 const S = {
   page: {
@@ -231,30 +236,50 @@ export default function Results() {
           </div>
         )}
 
-        {/* Concept map */}
-        <div
-          ref={graphContainerRef}
-          style={{
-            background: "rgba(0,0,0,0.02)",
-            border: "1px solid #e0dbd3",
-            borderRadius: "4px",
-            padding: "1rem",
-            marginBottom: "2rem",
-          }}
-        >
-          <ErrorBoundary label="concept map">
-            <ForceGraph
-              responses={responses}
-              width={Math.max(graphWidth - 32, 280)}
-              height={Math.round(Math.max(graphWidth - 32, 280) * 0.62)}
-              showLegend={true}
-            />
-          </ErrorBoundary>
-        </div>
+        {/* Concept map — ForceGraph when sparse, MDS once enough data */}
+        {(() => {
+          const useMDS = responses.length >= MDS_THRESHOLD;
+          const ratedConcepts = CONCEPTS.filter(c =>
+            responses.some(r => r.concept_a === c || r.concept_b === c)
+          );
+          const w = Math.max(graphWidth - 32, 280);
+          return (
+            <div
+              ref={graphContainerRef}
+              style={{
+                background: "rgba(0,0,0,0.02)",
+                border: "1px solid #e0dbd3",
+                borderRadius: "4px",
+                padding: "1rem",
+                marginBottom: "2rem",
+              }}
+            >
+              <ErrorBoundary label="concept map">
+                {useMDS ? (
+                  <MDSPlot
+                    responses={responses}
+                    concepts={ratedConcepts}
+                    width={w}
+                    height={Math.round(w * 0.75)}
+                    showLegend={true}
+                  />
+                ) : (
+                  <ForceGraph
+                    responses={responses}
+                    width={w}
+                    height={Math.round(w * 0.62)}
+                    showLegend={true}
+                  />
+                )}
+              </ErrorBoundary>
+            </div>
+          );
+        })()}
 
         <p style={{ fontSize: "0.72rem", color: "#666", lineHeight: 1.8, marginBottom: "0.5rem" }}>
-          Each node is a concept you rated. Edges connect rated pairs —
-          thicker and darker means your mind placed them closer together.
+          {responses.length >= MDS_THRESHOLD
+            ? "Each dot is a concept you rated. Spatial distance reflects how closely your mind associates them."
+            : "Each node is a concept you rated. Edges connect rated pairs — thicker and darker means your mind placed them closer together."}
           {isOwnSession && " Share the link above so others can see your map."}
         </p>
 

@@ -16,13 +16,18 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
-import { CONCEPT_COLOR, getAllPairsForSession, FIRST_BATCH_SIZE, CONTINUED_BATCH_SIZE, TOTAL_PAIRS } from "../lib/concepts";
+import { CONCEPTS, CONCEPT_COLOR, getAllPairsForSession, FIRST_BATCH_SIZE, CONTINUED_BATCH_SIZE, TOTAL_PAIRS } from "../lib/concepts";
 import { claimSessionIndex, createSession, saveResponses, saveSession, fetchSessionResponses } from "../lib/supabase";
 import { LS_SESSION_KEY, LS_COMPLETED_KEY } from "../lib/session";
 import { btnPrimary, btnSecondary } from "../styles/buttons";
 import { useContainerWidth } from "../lib/hooks";
 import ForceGraph from "../components/ForceGraph";
+import MDSPlot from "../components/MDSPlot";
 import ErrorBoundary from "../components/ErrorBoundary";
+
+// Switch from ForceGraph → MDS once the user has rated this many pairs.
+// Below this threshold the distance matrix is too sparse for MDS to be meaningful.
+const MDS_THRESHOLD = 40;
 
 // ─── Phases ──────────────────────────────────────────────────────────────────
 
@@ -515,6 +520,12 @@ function Checkpoint({ ratings, totalPairs, sessionId, onContinue, onDone }) {
   const conceptsInSession = [...new Set(ratings.flatMap(r => r.pair))];
   const pct = Math.round((ratings.length / totalPairs) * 100);
 
+  // Use MDS once the user has rated enough pairs for a meaningful spatial layout.
+  // Below the threshold ForceGraph shows connections better for sparse data.
+  const useMDS = ratings.length >= MDS_THRESHOLD;
+  // Keep CONCEPTS ordering so MDSPlot's collision-avoidance is consistent
+  const ratedConcepts = CONCEPTS.filter(c => conceptsInSession.includes(c));
+
   // Stack the two insight columns on narrow screens
   const pairsColumns = graphWidth < 500 ? "1fr" : "1fr 1fr";
 
@@ -548,7 +559,7 @@ function Checkpoint({ ratings, totalPairs, sessionId, onContinue, onDone }) {
         ))}
       </div>
 
-      {/* Personal concept map */}
+      {/* Personal concept map — ForceGraph when sparse, MDS once enough data */}
       {conceptsInSession.length >= 5 && (
         <div
           ref={graphContainerRef}
@@ -561,13 +572,24 @@ function Checkpoint({ ratings, totalPairs, sessionId, onContinue, onDone }) {
           }}
         >
           <ErrorBoundary label="concept map">
-            <ForceGraph
-              responses={responses}
-              width={Math.max(graphWidth - 32, 280)}
-              height={Math.round(Math.max(graphWidth - 32, 280) * 0.62)}
-              showLegend={true}
-              label={`Your concept network — ${conceptsInSession.length} concepts`}
-            />
+            {useMDS ? (
+              <MDSPlot
+                responses={responses}
+                concepts={ratedConcepts}
+                width={Math.max(graphWidth - 32, 280)}
+                height={Math.round(Math.max(graphWidth - 32, 280) * 0.75)}
+                showLegend={true}
+                label={`Your concept map — ${conceptsInSession.length} concepts`}
+              />
+            ) : (
+              <ForceGraph
+                responses={responses}
+                width={Math.max(graphWidth - 32, 280)}
+                height={Math.round(Math.max(graphWidth - 32, 280) * 0.62)}
+                showLegend={true}
+                label={`Your concept network — ${conceptsInSession.length} concepts`}
+              />
+            )}
           </ErrorBoundary>
         </div>
       )}
