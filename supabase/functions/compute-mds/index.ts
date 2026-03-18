@@ -21,7 +21,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { CONCEPTS_BY_DOMAIN, CONCEPTS } from "../../src/lib/concepts.js";
+import { CONCEPTS_BY_DOMAIN, CONCEPTS } from "../../../src/lib/concepts.js";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
