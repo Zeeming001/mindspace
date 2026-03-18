@@ -8,16 +8,16 @@
  *   1. Fetches all responses from sessions matching the group
  *   2. Builds an N×N distance matrix (distance = 1 - mean_rating/5)
  *   3. Applies classical MDS to extract 2D coordinates
- *   4. Writes results to aggregate_positions table
+ *   4. Runs Ward hierarchical clustering on the 2D coordinates
+ *   5. Writes results (x, y, cluster) to aggregate_positions table
  *
  * Groups computed:
- *   - 'all'              → all completed sessions
- *   - 'political:1-2'    → political IN (1,2)
- *   - 'political:3'      → political = 3
- *   - 'political:4'      → political = 4  (centrist)
- *   - 'political:5'      → political = 5
- *   - 'political:6-7'    → political IN (6,7)
- *   - 'religion:*'       → religion = value
+ *   - 'all'                → all completed sessions
+ *   - 'political:left'     → political IN (1,2,3)
+ *   - 'political:center'   → political = 4
+ *   - 'political:right'    → political IN (5,6,7)
+ *   - 'religion:religious' → religion IN (Christian, Muslim, Jewish, Hindu, Buddhist, Other)
+ *   - 'religion:secular'   → religion = None
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -29,9 +29,96 @@ const MIN_N        = 15; // minimum respondents to compute a map
 
 // ── Group definitions ──────────────────────────────────────────────────────
 
-interface GroupDef {
-  key: string;
-  filter: (sb: ReturnType<typeof createClient>) => Promise<string[]>; // returns session_ids
+// ── Ward hierarchical clustering ──────────────────────────────────────────
+
+/**
+ * Agglomerative Ward clustering on 2D coordinates.
+ * Selects optimal k (2–maxK) by mean silhouette score.
+ * Returns a cluster-index array (0-based) parallel to the input arrays.
+ */
+function wardCluster(x: number[], y: number[], maxK = 10): number[] {
+  const n = x.length;
+  if (n <= 2) return x.map((_, i) => i);
+
+  interface Cluster { indices: number[]; cx: number; cy: number; }
+  let clusters: Cluster[] = x.map((xi, i) => ({ indices: [i], cx: xi, cy: y[i] }));
+
+  const history: Record<number, number[]> = {};
+
+  while (clusters.length > 1) {
+    const k = clusters.length;
+    const asgn = new Array<number>(n);
+    clusters.forEach((cl, ci) => cl.indices.forEach(idx => { asgn[idx] = ci; }));
+    history[k] = asgn;
+
+    let minDist = Infinity, mi = 0, mj = 1;
+    for (let i = 0; i < clusters.length; i++) {
+      for (let j = i + 1; j < clusters.length; j++) {
+        const na = clusters[i].indices.length, nb = clusters[j].indices.length;
+        const dx = clusters[i].cx - clusters[j].cx;
+        const dy = clusters[i].cy - clusters[j].cy;
+        const d = (na * nb) / (na + nb) * (dx * dx + dy * dy);
+        if (d < minDist) { minDist = d; mi = i; mj = j; }
+      }
+    }
+
+    const a = clusters[mi], b = clusters[mj];
+    const na = a.indices.length, nb = b.indices.length;
+    clusters[mi] = {
+      indices: [...a.indices, ...b.indices],
+      cx: (na * a.cx + nb * b.cx) / (na + nb),
+      cy: (na * a.cy + nb * b.cy) / (na + nb),
+    };
+    clusters.splice(mj, 1);
+  }
+
+  const effMaxK = Math.min(maxK, n - 1);
+  let bestK = Math.min(4, effMaxK);
+  let bestScore = -Infinity;
+  for (let k = 2; k <= effMaxK; k++) {
+    if (!history[k]) continue;
+    const score = meanSilhouette(x, y, history[k], k);
+    if (score > bestScore) { bestScore = score; bestK = k; }
+  }
+
+  return history[bestK] ?? new Array(n).fill(0);
+}
+
+function meanSilhouette(x: number[], y: number[], assignments: number[], k: number): number {
+  const n = x.length;
+  if (k <= 1 || k >= n) return 0;
+  let total = 0, count = 0;
+
+  for (let i = 0; i < n; i++) {
+    const ci = assignments[i];
+    let aSum = 0, aCount = 0;
+    for (let j = 0; j < n; j++) {
+      if (j !== i && assignments[j] === ci) {
+        aSum += Math.sqrt((x[i] - x[j]) ** 2 + (y[i] - y[j]) ** 2);
+        aCount++;
+      }
+    }
+    const a = aCount > 0 ? aSum / aCount : 0;
+
+    let minB = Infinity;
+    for (let ck = 0; ck < k; ck++) {
+      if (ck === ci) continue;
+      let bSum = 0, bCount = 0;
+      for (let j = 0; j < n; j++) {
+        if (assignments[j] === ck) {
+          bSum += Math.sqrt((x[i] - x[j]) ** 2 + (y[i] - y[j]) ** 2);
+          bCount++;
+        }
+      }
+      if (bCount > 0) minB = Math.min(minB, bSum / bCount);
+    }
+    if (!isFinite(minB)) continue;
+
+    const s = (minB - a) / Math.max(a, minB);
+    if (isFinite(s)) { total += s; count++; }
+  }
+
+  return count > 0 ? total / count : 0;
 }
 
 // ── MDS implementation ────────────────────────────────────────────────────
@@ -143,17 +230,12 @@ Deno.serve(async (_req) => {
     field: string | null;
     values: (number | string)[] | null;
   }> = [
-    { key: "all",            field: null,        values: null },
-    { key: "political:1-2",  field: "political", values: [1, 2] },
-    { key: "political:3",    field: "political", values: [3] },
-    { key: "political:4",    field: "political", values: [4] },
-    { key: "political:5",    field: "political", values: [5] },
-    { key: "political:6-7",  field: "political", values: [6, 7] },
-    { key: "religion:Christian", field: "religion", values: ["Christian"] },
-    { key: "religion:None",      field: "religion", values: ["None"] },
-    { key: "religion:Muslim",    field: "religion", values: ["Muslim"] },
-    { key: "religion:Jewish",    field: "religion", values: ["Jewish"] },
-        { key: "religion:Other", field: "religion", values: ["Hindu", "Buddhist", "Other"] },
+    { key: "all",                field: null,        values: null },
+    { key: "political:left",     field: "political", values: [1, 2, 3] },
+    { key: "political:center",   field: "political", values: [4] },
+    { key: "political:right",    field: "political", values: [5, 6, 7] },
+    { key: "religion:religious", field: "religion",  values: ["Christian", "Muslim", "Jewish", "Hindu", "Buddhist", "Other"] },
+    { key: "religion:secular",   field: "religion",  values: ["None"] },
   ];
 
   // ── Process each group ────────────────────────────────────────────────
@@ -183,12 +265,16 @@ Deno.serve(async (_req) => {
       const distMatrix = buildDistanceMatrix(CONCEPTS, responses);
       const { x, y } = classicalMDS(distMatrix);
 
-      // Upsert coordinates into aggregate_positions
+      // Run Ward hierarchical clustering on the 2D layout
+      const clusterAssignments = wardCluster(x, y, 10);
+
+      // Upsert coordinates + cluster assignments into aggregate_positions
       const rows = CONCEPTS.map((concept, i) => ({
         group_key:   group.key,
         concept,
         x:           x[i],
         y:           y[i],
+        cluster:     clusterAssignments[i],
         n_responses: sessionIds.length,
         computed_at: now,
       }));

@@ -168,3 +168,151 @@ export function normalizeCoords(x, y) {
     y: y.map(v => (v - minY) / rangeY),
   };
 }
+
+/**
+ * Agglomerative hierarchical clustering with Ward linkage.
+ *
+ * Ward's criterion merges the pair of clusters whose union minimises the
+ * increase in total within-cluster sum of squares.  For 2D coordinates this
+ * is both cheap (O(n³) for n ≤ 100) and produces compact, visually clear
+ * clusters without requiring a pre-specified k.
+ *
+ * The optimal k is selected automatically using the mean silhouette score
+ * (tries k = 2 … min(maxK, n-1), picks the highest score).
+ *
+ * @param {number[]} x    - x coordinates (length n, already normalised 0-1)
+ * @param {number[]} y    - y coordinates (length n)
+ * @param {number}   maxK - maximum k to consider (default 10)
+ * @returns {number[]} assignments - cluster index (0-based) per point
+ */
+export function hierarchicalCluster(x, y, maxK = 10) {
+  const n = x.length;
+  if (n <= 2) return x.map((_, i) => i);
+
+  // Each cluster: { indices, cx (centroid x), cy (centroid y) }
+  let clusters = x.map((xi, i) => ({ indices: [i], cx: xi, cy: y[i] }));
+
+  // clusterHistory[k] = assignments array captured when there were k clusters
+  // (recorded just before the merge that reduces the count from k to k-1).
+  const clusterHistory = {};
+
+  while (clusters.length > 1) {
+    // Snapshot assignments for the current cluster count
+    const k = clusters.length;
+    const asgn = new Array(n);
+    clusters.forEach((cl, ci) => cl.indices.forEach(idx => { asgn[idx] = ci; }));
+    clusterHistory[k] = asgn;
+
+    // Find the pair (i, j) with the minimum Ward linkage distance.
+    // Ward distance: Δ(A,B) = (nA·nB)/(nA+nB) · ‖μA−μB‖²
+    let minDist = Infinity, mergeI = 0, mergeJ = 1;
+    for (let i = 0; i < clusters.length; i++) {
+      for (let j = i + 1; j < clusters.length; j++) {
+        const na = clusters[i].indices.length, nb = clusters[j].indices.length;
+        const dx = clusters[i].cx - clusters[j].cx;
+        const dy = clusters[i].cy - clusters[j].cy;
+        const d = (na * nb) / (na + nb) * (dx * dx + dy * dy);
+        if (d < minDist) { minDist = d; mergeI = i; mergeJ = j; }
+      }
+    }
+
+    // Merge cluster mergeJ into mergeI (weighted centroid update)
+    const a = clusters[mergeI], b = clusters[mergeJ];
+    const na = a.indices.length, nb = b.indices.length;
+    clusters[mergeI] = {
+      indices: [...a.indices, ...b.indices],
+      cx: (na * a.cx + nb * b.cx) / (na + nb),
+      cy: (na * a.cy + nb * b.cy) / (na + nb),
+    };
+    clusters.splice(mergeJ, 1);
+  }
+
+  // Select best k by mean silhouette score
+  const effMaxK = Math.min(maxK, n - 1);
+  let bestK = Math.min(4, effMaxK);
+  let bestScore = -Infinity;
+  for (let k = 2; k <= effMaxK; k++) {
+    if (!clusterHistory[k]) continue;
+    const score = _meanSilhouette(x, y, clusterHistory[k], k);
+    if (score > bestScore) { bestScore = score; bestK = k; }
+  }
+
+  return clusterHistory[bestK] || new Array(n).fill(0);
+}
+
+/** @private Compute mean silhouette coefficient for the given assignments. */
+function _meanSilhouette(x, y, assignments, k) {
+  const n = x.length;
+  if (k <= 1 || k >= n) return 0;
+  let total = 0, count = 0;
+
+  for (let i = 0; i < n; i++) {
+    const ci = assignments[i];
+
+    // a(i): mean distance to other points in the same cluster
+    let aSum = 0, aCount = 0;
+    for (let j = 0; j < n; j++) {
+      if (j !== i && assignments[j] === ci) {
+        aSum += Math.sqrt((x[i] - x[j]) ** 2 + (y[i] - y[j]) ** 2);
+        aCount++;
+      }
+    }
+    const a = aCount > 0 ? aSum / aCount : 0;
+
+    // b(i): mean distance to the nearest other cluster
+    let minB = Infinity;
+    for (let ck = 0; ck < k; ck++) {
+      if (ck === ci) continue;
+      let bSum = 0, bCount = 0;
+      for (let j = 0; j < n; j++) {
+        if (assignments[j] === ck) {
+          bSum += Math.sqrt((x[i] - x[j]) ** 2 + (y[i] - y[j]) ** 2);
+          bCount++;
+        }
+      }
+      if (bCount > 0) minB = Math.min(minB, bSum / bCount);
+    }
+    if (!isFinite(minB)) continue;
+
+    const s = (minB - a) / Math.max(a, minB);
+    if (isFinite(s)) { total += s; count++; }
+  }
+
+  return count > 0 ? total / count : 0;
+}
+
+/**
+ * Compute the convex hull of a set of 2D points using Andrew's monotone
+ * chain algorithm.  Returns the hull vertices in counter-clockwise order.
+ *
+ * @param {Array<{x: number, y: number}>} points
+ * @returns {Array<{x: number, y: number}>}
+ */
+export function convexHull(points) {
+  if (points.length <= 2) return [...points];
+
+  const pts = [...points].sort((a, b) => a.x !== b.x ? a.x - b.x : a.y - b.y);
+
+  function cross(O, A, B) {
+    return (A.x - O.x) * (B.y - O.y) - (A.y - O.y) * (B.x - O.x);
+  }
+
+  const lower = [];
+  for (const p of pts) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0)
+      lower.pop();
+    lower.push(p);
+  }
+
+  const upper = [];
+  for (let i = pts.length - 1; i >= 0; i--) {
+    const p = pts[i];
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0)
+      upper.pop();
+    upper.push(p);
+  }
+
+  upper.pop();
+  lower.pop();
+  return [...lower, ...upper];
+}

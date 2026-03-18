@@ -86,17 +86,15 @@ export function getAllPairsForSession(sessionIndex) {
   return shuffled;
 }
 
-// Groups available for stratified explore view
+// Groups available for stratified explore view.
+// Kept intentionally broad so each group accumulates enough responses to
+// produce a stable MDS map. Granular sub-groups can be added later once
+// the respondent pool is larger.
 export const GROUPS = [
-  { id: "all",            label: "All respondents",         field: null,        value: null },
-  { id: "political:1-2",  label: "Very liberal",            field: "political", value: [1, 2] },
-  { id: "political:3",    label: "Moderate left",           field: "political", value: [3] },
-  { id: "political:4",    label: "Centrist",                field: "political", value: [4] },
-  { id: "political:5",    label: "Moderate right",          field: "political", value: [5] },
-  { id: "political:6-7",  label: "Very conservative",       field: "political", value: [6, 7] },
-  { id: "religion:Christian",  label: "Christian",          field: "religion",  value: "Christian" },
-  { id: "religion:None",       label: "Non-religious",      field: "religion",  value: "None" },
-  { id: "religion:Muslim",     label: "Muslim",             field: "religion",  value: "Muslim" },
-  { id: "religion:Jewish",     label: "Jewish",             field: "religion",  value: "Jewish" },
-  { id: "religion:Other",      label: "Other / Hindu / Buddhist", field: "religion", value: ["Hindu", "Buddhist", "Other"] },
+  { id: "all",               label: "All respondents",        field: null,        value: null },
+  { id: "political:left",    label: "Liberal",                field: "political", value: [1, 2, 3] },
+  { id: "political:center",  label: "Centrist",               field: "political", value: [4] },
+  { id: "political:right",   label: "Conservative",           field: "political", value: [5, 6, 7] },
+  { id: "religion:religious", label: "Religious",             field: "religion",  value: ["Christian", "Muslim", "Jewish", "Hindu", "Buddhist", "Other"] },
+  { id: "religion:secular",   label: "Secular / Non-religious", field: "religion", value: ["None"] },
 ];

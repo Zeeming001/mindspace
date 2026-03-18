@@ -78,7 +78,7 @@ export async function createSession(sessionId) {
 export async function fetchGroupPositions(groupKey) {
   const { data, error } = await supabase
     .from("aggregate_positions")
-    .select("concept, x, y, n_responses, computed_at")
+    .select("concept, x, y, cluster, n_responses, computed_at")
     .eq("group_key", groupKey);
 
   if (error) throw error;

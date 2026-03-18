@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS aggregate_positions (
   concept      TEXT    NOT NULL,
   x            FLOAT   NOT NULL,
   y            FLOAT   NOT NULL,
+  cluster      INTEGER,              -- Ward cluster index (0-based), set by Edge Function
   n_responses  INTEGER NOT NULL DEFAULT 0,
   computed_at  TIMESTAMPTZ DEFAULT NOW(),
   PRIMARY KEY (group_key, concept)

@@ -1,6 +1,20 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { CONCEPTS, CONCEPT_COLOR, DOMAINS } from "../lib/concepts";
-import { classicalMDS, buildDistanceMatrix, normalizeCoords } from "../lib/mds";
+import { classicalMDS, buildDistanceMatrix, normalizeCoords, hierarchicalCluster, convexHull } from "../lib/mds";
+
+// Subtle per-cluster fill and stroke colours (cycle through up to 8 clusters).
+// These are intentionally low-saturation so they don't compete with the
+// domain-colour dots sitting on top of them.
+const CLUSTER_FILL   = [
+  "rgba(180,200,255,0.15)", "rgba(255,185,185,0.15)", "rgba(175,240,195,0.15)",
+  "rgba(255,248,180,0.15)", "rgba(240,185,255,0.15)", "rgba(175,248,255,0.15)",
+  "rgba(255,220,175,0.15)", "rgba(220,195,255,0.15)",
+];
+const CLUSTER_STROKE = [
+  "rgba(100,130,210,0.35)", "rgba(200,90,90,0.35)",   "rgba(70,185,110,0.35)",
+  "rgba(195,185,45,0.35)",  "rgba(175,75,200,0.35)",  "rgba(45,185,200,0.35)",
+  "rgba(200,135,45,0.35)",  "rgba(135,85,200,0.35)",
+];
 
 /**
  * MDSPlot renders a 2D concept map from either:
@@ -8,7 +22,7 @@ import { classicalMDS, buildDistanceMatrix, normalizeCoords } from "../lib/mds";
  *   - raw responses (responses prop) — computes MDS in-browser
  *
  * Props:
- *   positions  - Array<{concept, x, y}> of precomputed coords (0..1 normalized)
+ *   positions  - Array<{concept, x, y, cluster?}> of precomputed coords (0..1 normalized)
  *   responses  - Array<{concept_a, concept_b, rating}> for in-browser MDS
  *   concepts   - which concepts to show (defaults to all 63)
  *   width, height - SVG dimensions
@@ -68,6 +82,33 @@ export default function MDSPlot({
 
     return null;
   }, [positions, responses, concepts]);
+
+  // Cluster assignments: concept -> integer cluster index.
+  // For precomputed positions: use the `cluster` field stored by the edge function.
+  // For in-browser MDS: run Ward clustering on the already-computed coords.
+  const clusters = useMemo(() => {
+    // Precomputed path
+    if (positions && positions.length > 0) {
+      const map = {};
+      let hasData = false;
+      for (const p of positions) {
+        if (p.cluster != null) { map[p.concept] = p.cluster; hasData = true; }
+      }
+      return hasData ? map : null;
+    }
+    // In-browser path
+    if (coords) {
+      const cl = Object.keys(coords);
+      if (cl.length < 6) return null;
+      const xs = cl.map(c => coords[c].x);
+      const ys = cl.map(c => coords[c].y);
+      const asgn = hierarchicalCluster(xs, ys, 10);
+      const map = {};
+      cl.forEach((c, i) => { map[c] = asgn[i]; });
+      return map;
+    }
+    return null;
+  }, [positions, coords]);
 
   // Animate transitions between coord sets
   useEffect(() => {
@@ -250,6 +291,56 @@ export default function MDSPlot({
             </feMerge>
           </filter>
         </defs>
+
+        {/* ── Cluster background hulls (rendered behind concept dots) ── */}
+        {clusters && displayCoords && (() => {
+          // Group SVG-space points by cluster index
+          const groups = {};
+          for (const concept of concepts) {
+            const pos = displayCoords[concept];
+            const k   = clusters[concept];
+            if (!pos || k == null) continue;
+            if (!groups[k]) groups[k] = [];
+            groups[k].push({ x: toSvgX(pos.x), y: toSvgY(pos.y) });
+          }
+
+          return Object.entries(groups).map(([ki, pts]) => {
+            if (pts.length < 3) return null; // need at least 3 pts for a hull
+
+            let hull;
+            if (pts.length === 3) {
+              hull = [...pts];
+            } else {
+              hull = convexHull(pts);
+              if (hull.length < 3) return null;
+            }
+
+            // Expand each hull vertex outward from the centroid by 16 px
+            const cx = hull.reduce((s, p) => s + p.x, 0) / hull.length;
+            const cy = hull.reduce((s, p) => s + p.y, 0) / hull.length;
+            const padded = hull.map(p => {
+              const dx = p.x - cx, dy = p.y - cy;
+              const len = Math.sqrt(dx * dx + dy * dy) || 1;
+              return { x: p.x + (dx / len) * 16, y: p.y + (dy / len) * 16 };
+            });
+
+            const d = padded
+              .map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`)
+              .join(' ') + 'Z';
+
+            const ci = parseInt(ki) % CLUSTER_FILL.length;
+            return (
+              <path
+                key={`cluster-hull-${ki}`}
+                d={d}
+                fill={CLUSTER_FILL[ci]}
+                stroke={CLUSTER_STROKE[ci]}
+                strokeWidth={1}
+                strokeDasharray="5 3"
+              />
+            );
+          });
+        })()}
 
         {concepts.map((concept) => {
           const c = displayCoords[concept];
