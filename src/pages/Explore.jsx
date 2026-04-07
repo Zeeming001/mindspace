@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { CONCEPTS, GROUPS } from "../lib/concepts";
-
-const MDS_THRESHOLD = 40; // mirror Survey.jsx / Results.jsx
+import { MDS_THRESHOLD } from "../lib/constants";
 import { fetchGroupPositions, fetchGroupCounts, fetchSessionResponses, MIN_RESPONDENTS } from "../lib/supabase";
 import { SAMPLE_POSITIONS } from "../lib/samplePositions";
 import MDSPlot from "../components/MDSPlot";
@@ -308,6 +307,7 @@ export default function Explore() {
                     width={w}
                     height={Math.round(w * 0.75)}
                     showLegend={true}
+                    defaultShowLabels={true}
                   />
                 ) : (
                   <ForceGraph
@@ -315,6 +315,7 @@ export default function Explore() {
                     width={w}
                     height={Math.round(w * 0.74)}
                     showLegend={true}
+                    defaultShowLabels={true}
                   />
                 )}
               </ErrorBoundary>

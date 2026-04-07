@@ -10,10 +10,12 @@ import { CONCEPT_COLOR, DOMAINS } from "../lib/concepts";
  * dissimilar ones far apart, with no imputation of unrated pairs.
  *
  * Props:
- *   responses  - Array<{concept_a, concept_b, rating}>
- *   width, height - SVG dimensions
- *   showLegend - whether to render domain legend
- *   label      - optional header label string
+ *   responses        - Array<{concept_a, concept_b, rating}>
+ *   width, height    - SVG dimensions
+ *   showLegend       - whether to render domain legend
+ *   label            - optional header label string
+ *   defaultShowLabels - whether labels start visible (default false for dense
+ *                       maps, true for sparse personal maps)
  */
 
 // ─── Physics constants ─────────────────────────────────────────────────────
@@ -39,14 +41,15 @@ function edgeStyle(rating) {
 }
 
 export default function ForceGraph({
-  responses = [],
-  width     = 620,
-  height    = 500,
-  showLegend = true,
-  label      = null,
+  responses         = [],
+  width             = 620,
+  height            = 500,
+  showLegend        = true,
+  label             = null,
+  defaultShowLabels = false,
 }) {
   const [hovered,    setHovered]    = useState(null);
-  const [showLabels, setShowLabels] = useState(false);
+  const [showLabels, setShowLabels] = useState(defaultShowLabels);
   const [positions,  setPositions]  = useState(null);
 
   const svgRef  = useRef(null);

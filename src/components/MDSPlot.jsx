@@ -1,19 +1,20 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { CONCEPTS, CONCEPT_COLOR, DOMAINS } from "../lib/concepts";
 import { classicalMDS, buildDistanceMatrix, normalizeCoords, hierarchicalCluster, convexHull } from "../lib/mds";
+import { stressQuality } from "../lib/constants";
 
-// Subtle per-cluster fill and stroke colours (cycle through up to 8 clusters).
-// These are intentionally low-saturation so they don't compete with the
-// domain-colour dots sitting on top of them.
+// Per-cluster fill and stroke colours (cycle through up to 8 clusters).
+// Opacity is intentionally moderate so hulls are visible without overwhelming
+// the domain-colour dots that sit on top of them.
 const CLUSTER_FILL   = [
-  "rgba(180,200,255,0.15)", "rgba(255,185,185,0.15)", "rgba(175,240,195,0.15)",
-  "rgba(255,248,180,0.15)", "rgba(240,185,255,0.15)", "rgba(175,248,255,0.15)",
-  "rgba(255,220,175,0.15)", "rgba(220,195,255,0.15)",
+  "rgba(180,200,255,0.22)", "rgba(255,185,185,0.22)", "rgba(175,240,195,0.22)",
+  "rgba(255,248,180,0.22)", "rgba(240,185,255,0.22)", "rgba(175,248,255,0.22)",
+  "rgba(255,220,175,0.22)", "rgba(220,195,255,0.22)",
 ];
 const CLUSTER_STROKE = [
-  "rgba(100,130,210,0.35)", "rgba(200,90,90,0.35)",   "rgba(70,185,110,0.35)",
-  "rgba(195,185,45,0.35)",  "rgba(175,75,200,0.35)",  "rgba(45,185,200,0.35)",
-  "rgba(200,135,45,0.35)",  "rgba(135,85,200,0.35)",
+  "rgba(100,130,210,0.50)", "rgba(200,90,90,0.50)",   "rgba(70,185,110,0.50)",
+  "rgba(195,185,45,0.50)",  "rgba(175,75,200,0.50)",  "rgba(45,185,200,0.50)",
+  "rgba(200,135,45,0.50)",  "rgba(135,85,200,0.50)",
 ];
 
 /**
@@ -22,34 +23,39 @@ const CLUSTER_STROKE = [
  *   - raw responses (responses prop) — computes MDS in-browser
  *
  * Props:
- *   positions  - Array<{concept, x, y, cluster?}> of precomputed coords (0..1 normalized)
- *   responses  - Array<{concept_a, concept_b, rating}> for in-browser MDS
- *   concepts   - which concepts to show (defaults to all 63)
- *   width, height - SVG dimensions
- *   showLegend - whether to render the domain legend below
- *   loading    - show skeleton state
- *   minN       - minimum n_responses to show (if using precomputed positions)
+ *   positions         - Array<{concept, x, y, cluster?}> precomputed coords (0..1 normalized)
+ *   responses         - Array<{concept_a, concept_b, rating}> for in-browser MDS
+ *   concepts          - which concepts to show (defaults to all CONCEPTS)
+ *   width, height     - SVG dimensions
+ *   showLegend        - whether to render the domain legend below
+ *   loading           - show skeleton state
+ *   label             - optional header label string
+ *   defaultShowLabels - whether labels start visible (default false for dense
+ *                       aggregate maps, true for personal maps)
  */
 export default function MDSPlot({
-  positions = null,
-  responses = null,
-  concepts = CONCEPTS,
-  width = 620,
-  height = 500,
-  showLegend = true,
-  loading = false,
-  label = null,
+  positions         = null,
+  responses         = null,
+  concepts          = CONCEPTS,
+  width             = 620,
+  height            = 500,
+  showLegend        = true,
+  loading           = false,
+  label             = null,
+  defaultShowLabels = false,
 }) {
   const [hovered, setHovered] = useState(null);
-  const [showLabels, setShowLabels] = useState(false);
+  const [showLabels, setShowLabels] = useState(defaultShowLabels);
   const prevCoordsRef = useRef(null);
   const [displayCoords, setDisplayCoords] = useState(null);
   const animFrameRef = useRef(null);
 
-  // Compute or use provided coordinates
-  const coords = useMemo(() => {
+  // Compute or use provided coordinates.
+  // Returns { coords: map, stress: number|null }
+  // stress is only available for in-browser MDS (not precomputed positions).
+  const { coords, stress } = useMemo(() => {
     if (positions && positions.length > 0) {
-      // Use precomputed positions
+      // Use precomputed positions (stress not available client-side)
       const xs = positions.map(p => p.x);
       const ys = positions.map(p => p.y);
       const minX = Math.min(...xs), maxX = Math.max(...xs);
@@ -63,24 +69,24 @@ export default function MDSPlot({
           y: (p.y - minY) / rangeY,
         };
       }
-      return map;
+      return { coords: map, stress: null };
     }
 
     if (responses && responses.length > 0) {
-      // In-browser MDS
+      // In-browser MDS — classicalMDS returns stress (Kruskal's stress-1)
       const filteredConcepts = concepts.filter(c =>
         responses.some(r => r.concept_a === c || r.concept_b === c)
       );
-      if (filteredConcepts.length < 3) return null;
+      if (filteredConcepts.length < 3) return { coords: null, stress: null };
       const distMatrix = buildDistanceMatrix(filteredConcepts, responses);
-      const { x, y } = classicalMDS(distMatrix);
+      const { x, y, stress } = classicalMDS(distMatrix);
       const { x: nx, y: ny } = normalizeCoords(x, y);
       const map = {};
       filteredConcepts.forEach((c, i) => { map[c] = { x: nx[i], y: ny[i] }; });
-      return map;
+      return { coords: map, stress };
     }
 
-    return null;
+    return { coords: null, stress: null };
   }, [positions, responses, concepts]);
 
   // Cluster assignments: concept -> integer cluster index.
@@ -335,8 +341,7 @@ export default function MDSPlot({
                 d={d}
                 fill={CLUSTER_FILL[ci]}
                 stroke={CLUSTER_STROKE[ci]}
-                strokeWidth={1}
-                strokeDasharray="5 3"
+                strokeWidth={1.2}
               />
             );
           });
@@ -387,12 +392,32 @@ export default function MDSPlot({
         })}
       </svg>
 
+      {/* Axis note — always shown to prevent misreading the layout */}
+      <div style={{
+        fontSize: "0.58rem",
+        color: "#aaa",
+        letterSpacing: "0.04em",
+        fontStyle: "italic",
+        marginTop: "0.4rem",
+        lineHeight: 1.5,
+      }}>
+        Position = relative similarity; axes are arbitrary.
+        {stress !== null && (() => {
+          const q = stressQuality(stress);
+          return (
+            <span style={{ marginLeft: "0.8rem", color: q.color, fontStyle: "normal" }}>
+              Layout quality: {q.label} (stress {stress.toFixed(3)})
+            </span>
+          );
+        })()}
+      </div>
+
       {showLegend && (
         <div style={{
           display: "flex",
           flexWrap: "wrap",
           gap: "0.8rem 1.5rem",
-          marginTop: "1rem",
+          marginTop: "0.75rem",
           padding: "0.75rem",
           borderTop: "1px solid #e0dbd3",
         }}>

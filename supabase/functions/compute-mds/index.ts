@@ -25,7 +25,8 @@ import { CONCEPTS_BY_DOMAIN, CONCEPTS } from "../../../src/lib/concepts.js";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const MIN_N        = 15; // minimum respondents to compute a map
+const CRON_SECRET  = Deno.env.get("COMPUTE_MDS_CRON_SECRET"); // set in Supabase Edge Function secrets
+const MIN_N        = 50; // minimum respondents to compute a map (matches MIN_RESPONDENTS in supabase.js)
 
 // ── Group definitions ──────────────────────────────────────────────────────
 
@@ -200,7 +201,21 @@ function buildDistanceMatrix(
 
 // ── Main handler ───────────────────────────────────────────────────────────
 
-Deno.serve(async (_req) => {
+Deno.serve(async (req) => {
+  // Auth guard — require Authorization: Bearer <COMPUTE_MDS_CRON_SECRET>
+  // Set COMPUTE_MDS_CRON_SECRET in Supabase Dashboard → Edge Functions → Secrets.
+  // Pass the same value in your cron scheduler (pg_cron, GitHub Actions, etc.).
+  if (CRON_SECRET) {
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    if (token !== CRON_SECRET) {
+      return new Response(
+        JSON.stringify({ ok: false, error: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }
+
   const sb = createClient(SUPABASE_URL, SERVICE_KEY);
   const log: string[] = [];
   const now = new Date().toISOString();

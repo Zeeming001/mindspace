@@ -137,7 +137,7 @@ export default function Home() {
         </p>
 
         <p style={S.p}>
-          Mindspace maps those distances — across individuals, and across the
+          The Empathy Project maps those distances — across individuals, and across the
           identity groups we belong to — to build a more honest picture of how
           differently people actually think, and why that's not the same as
           thinking wrongly.

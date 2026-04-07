@@ -31,7 +31,7 @@ function NavBar() {
       backdropFilter: "blur(8px)",
     }}>
       <NavLink to="/" style={{ fontSize: "0.7rem", letterSpacing: "0.35em", color: "#888", textTransform: "uppercase" }}>
-        Mindspace
+        The Empathy Project
       </NavLink>
       <div style={{ display: "flex", gap: "2rem" }}>
         {NAV_LINKS.map(({ to, label }) => (
@@ -72,7 +72,7 @@ function Footer() {
       flexWrap: "wrap",
       gap: "0.5rem",
     }}>
-      <span>MINDSPACE</span>
+      <span>THE EMPATHY PROJECT · empathyproject.net</span>
       <span>{CONCEPTS.length} CONCEPTS · {TOTAL_PAIRS.toLocaleString()} PAIRS · FORCE-DIRECTED + MDS</span>
     </footer>
   );

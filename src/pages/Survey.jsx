@@ -11,6 +11,7 @@
  *   - All 1,953 pairs are available; motivated respondents can complete the full matrix
  *   - Responses are saved to Supabase after each batch (incremental, not on final submit)
  *   - Personal concept network (force-directed graph) is rendered from ratings accumulated so far
+ *   - Users can undo the last rating within the current batch (accidental tap recovery)
  */
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
@@ -19,15 +20,12 @@ import { v4 as uuidv4 } from "uuid";
 import { CONCEPTS, CONCEPT_COLOR, getAllPairsForSession, FIRST_BATCH_SIZE, CONTINUED_BATCH_SIZE, TOTAL_PAIRS } from "../lib/concepts";
 import { claimSessionIndex, createSession, saveResponses, saveSession, fetchSessionResponses } from "../lib/supabase";
 import { LS_SESSION_KEY, LS_COMPLETED_KEY } from "../lib/session";
+import { MDS_THRESHOLD } from "../lib/constants";
 import { btnPrimary, btnSecondary } from "../styles/buttons";
 import { useContainerWidth } from "../lib/hooks";
 import ForceGraph from "../components/ForceGraph";
 import MDSPlot from "../components/MDSPlot";
 import ErrorBoundary from "../components/ErrorBoundary";
-
-// Switch from ForceGraph → MDS once the user has rated this many pairs.
-// Below this threshold the distance matrix is too sparse for MDS to be meaningful.
-const MDS_THRESHOLD = 40;
 
 // ─── Phases ──────────────────────────────────────────────────────────────────
 
@@ -245,7 +243,7 @@ const S = {
   },
 };
 
-const RATING_LABELS = ["Very unlikely", "Unlikely", "Possible", "Likely", "Very likely"];
+const RATING_LABELS = ["Very distant", "Distant", "Moderate", "Close", "Very close"];
 
 // ─── Privacy Notice ───────────────────────────────────────────────────────────
 
@@ -290,7 +288,7 @@ function PrivacyNotice({ onAccept, alreadyCompleted }) {
       </p>
       <div style={S.btnRow}>
         <button style={S.btnPrimary} onClick={onAccept}>
-                    {alreadyCompleted ? "Continue rating \u2192" : "I understand \u2014 begin \u2192"}
+          {alreadyCompleted ? "Continue rating →" : "I understand — begin →"}
         </button>
       </div>
     </div>
@@ -299,7 +297,7 @@ function PrivacyNotice({ onAccept, alreadyCompleted }) {
 
 // ─── Survey Question ──────────────────────────────────────────────────────────
 
-function SurveyQuestion({ pair, onRate, ratedInBatch, batchSize, totalRated, totalPairs }) {
+function SurveyQuestion({ pair, onRate, onUndo, canUndo, ratedInBatch, batchSize }) {
   const [selected, setSelected] = useState(null);
   const [fading, setFading] = useState(false);
   const lastPairRef = useRef(null);
@@ -317,7 +315,7 @@ function SurveyQuestion({ pair, onRate, ratedInBatch, batchSize, totalRated, tot
     if (fading) return;
     setSelected(val);
     setFading(true);
-    setTimeout(() => onRate(val), 280);
+    setTimeout(() => onRate(val), 180);
   }, [fading, onRate]);
 
   // Keyboard shortcut: press 1–5 to rate
@@ -330,13 +328,10 @@ function SurveyQuestion({ pair, onRate, ratedInBatch, batchSize, totalRated, tot
     return () => window.removeEventListener("keydown", handler);
   }, [handleSelect]);
 
-  // Progress = fraction of current batch completed
   const batchProgress = ratedInBatch / batchSize;
-  // Overall coverage = fraction of all pairs ever rated
-  const overallPct = Math.round((totalRated / totalPairs) * 100);
 
   return (
-    <div style={{ ...S.card, opacity: fading ? 0 : 1, transition: "opacity 0.22s ease" }}>
+    <div style={{ ...S.card, opacity: fading ? 0 : 1, transition: "opacity 0.18s ease" }}>
       {/* Batch progress bar */}
       <div style={S.progressBar}>
         <div style={S.progressFill(batchProgress)} />
@@ -350,7 +345,7 @@ function SurveyQuestion({ pair, onRate, ratedInBatch, batchSize, totalRated, tot
         textAlign: "center",
         marginBottom: "2rem",
       }}>
-        If someone fits one of these descriptions, how likely are they to fit the other?
+        How closely related are these concepts in your mind?
       </div>
 
       <div style={S.conceptPair}>
@@ -379,20 +374,47 @@ function SurveyQuestion({ pair, onRate, ratedInBatch, batchSize, totalRated, tot
         ))}
       </div>
 
-      <div style={{ textAlign: "center", marginTop: "0.9rem", fontSize: "0.52rem", color: "#bbb", letterSpacing: "0.12em" }}>
-        Keyboard: press 1 – 5
-      </div>
-
+      {/* Bottom row: keyboard hint on left, undo on right */}
       <div style={{
         display: "flex",
         justifyContent: "space-between",
-        marginTop: "1.2rem",
+        alignItems: "center",
+        marginTop: "0.9rem",
+        minHeight: "1.2rem",
+      }}>
+        <span style={{ fontSize: "0.52rem", color: "#bbb", letterSpacing: "0.12em" }}>
+          Keyboard: press 1 – 5
+        </span>
+        {canUndo && (
+          <button
+            onClick={onUndo}
+            style={{
+              fontSize: "0.55rem",
+              color: "#888",
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: "0.2rem 0",
+              textDecoration: "underline",
+              fontFamily: "inherit",
+            }}
+          >
+            undo last
+          </button>
+        )}
+      </div>
+
+      {/* Batch progress counter */}
+      <div style={{
+        textAlign: "center",
+        marginTop: "0.6rem",
         fontSize: "0.58rem",
         color: "#aaa",
         letterSpacing: "0.1em",
       }}>
-        <span>{ratedInBatch} / {batchSize} in this batch</span>
-        <span>{overallPct}% of full matrix</span>
+        {ratedInBatch} of {batchSize} in this batch
       </div>
     </div>
   );
@@ -400,10 +422,14 @@ function SurveyQuestion({ pair, onRate, ratedInBatch, batchSize, totalRated, tot
 
 // ─── Demographics ─────────────────────────────────────────────────────────────
 
+// Common countries shown as radio buttons; "Other" triggers a text field.
+const COMMON_COUNTRIES = ["United States", "United Kingdom", "Canada", "Australia", "Germany", "France", "India"];
+
 function DemographicsForm({ onSubmit, onSkip }) {
   const [form, setForm] = useState({
     political: "", religion: "", age_range: "", gender: "", country: "", education: "",
   });
+  const [countryOther, setCountryOther] = useState("");
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
 
@@ -420,6 +446,14 @@ function DemographicsForm({ onSubmit, onSkip }) {
       ))}
     </div>
   );
+
+  const handleSubmit = () => {
+    const resolved = {
+      ...form,
+      country: form.country === "Other" ? countryOther.trim() : form.country,
+    };
+    onSubmit(resolved);
+  };
 
   return (
     <div style={S.card}>
@@ -456,12 +490,13 @@ function DemographicsForm({ onSubmit, onSkip }) {
 
         <span style={S.fieldLabel}>Age range</span>
         <RadioGroup field="age_range" options={[
-          { value: "18-24", label: "18–24" },
-          { value: "25-34", label: "25–34" },
-          { value: "35-44", label: "35–44" },
-          { value: "45-54", label: "45–54" },
-          { value: "55-64", label: "55–64" },
-          { value: "65+",   label: "65+" },
+          { value: "Under 18", label: "Under 18" },
+          { value: "18-24",    label: "18–24" },
+          { value: "25-34",    label: "25–34" },
+          { value: "35-44",    label: "35–44" },
+          { value: "45-54",    label: "45–54" },
+          { value: "55-64",    label: "55–64" },
+          { value: "65+",      label: "65+" },
         ]} />
 
         <span style={S.fieldLabel}>Gender</span>
@@ -481,17 +516,36 @@ function DemographicsForm({ onSubmit, onSkip }) {
         ]} />
 
         <span style={S.fieldLabel}>Country of residence</span>
-        <input
-          type="text"
-          placeholder="Optional"
-          value={form.country}
-          onChange={e => set("country", e.target.value)}
-          style={S.textInput}
-        />
+        <div style={S.radioGroup}>
+          {COMMON_COUNTRIES.map(c => (
+            <button
+              key={c}
+              style={S.radioBtn(form.country === c)}
+              onClick={() => set("country", form.country === c ? "" : c)}
+            >
+              {c}
+            </button>
+          ))}
+          <button
+            style={S.radioBtn(form.country === "Other")}
+            onClick={() => set("country", form.country === "Other" ? "" : "Other")}
+          >
+            Other
+          </button>
+        </div>
+        {form.country === "Other" && (
+          <input
+            type="text"
+            placeholder="Country name"
+            value={countryOther}
+            onChange={e => setCountryOther(e.target.value)}
+            style={S.textInput}
+          />
+        )}
       </div>
 
       <div style={S.btnRow}>
-        <button style={S.btnPrimary} onClick={() => onSubmit(form)}>
+        <button style={S.btnPrimary} onClick={handleSubmit}>
           Continue →
         </button>
         <button style={S.btnSecondary} onClick={onSkip}>
@@ -518,15 +572,11 @@ function Checkpoint({ ratings, totalPairs, sessionId, onContinue, onDone }) {
     concept_a: pair[0], concept_b: pair[1], rating: val,
   }));
   const conceptsInSession = [...new Set(ratings.flatMap(r => r.pair))];
-  const pct = Math.round((ratings.length / totalPairs) * 100);
 
   // Use MDS once the user has rated enough pairs for a meaningful spatial layout.
-  // Below the threshold ForceGraph shows connections better for sparse data.
   const useMDS = ratings.length >= MDS_THRESHOLD;
-  // Keep CONCEPTS ordering so MDSPlot's collision-avoidance is consistent
   const ratedConcepts = CONCEPTS.filter(c => conceptsInSession.includes(c));
 
-  // Stack the two insight columns on narrow screens
   const pairsColumns = graphWidth < 500 ? "1fr" : "1fr 1fr";
 
   const shareUrl = `${window.location.origin}/results?s=${sessionId}`;
@@ -542,15 +592,14 @@ function Checkpoint({ ratings, totalPairs, sessionId, onContinue, onDone }) {
       <span style={S.label}>
         {hasMore ? "Checkpoint" : "Survey complete"}
       </span>
-      <h2 style={S.h2}>Your mindspace so far</h2>
+      <h2 style={S.h2}>Your concept map so far</h2>
 
-      {/* Stats */}
+      {/* Stats — positive framing, no discouraging "remaining" count */}
       <div style={S.statRow}>
         {[
-          { value: ratings.length, label: "Pairs rated" },
-          { value: `${pct}%`,      label: "Matrix coverage" },
-          { value: conceptsInSession.length, label: "Concepts seen" },
-          { value: totalPairs - ratings.length, label: "Pairs remaining" },
+          { value: ratings.length,            label: "Pairs rated" },
+          { value: conceptsInSession.length,  label: "Concepts seen" },
+          { value: `${Math.round((ratings.length / TOTAL_PAIRS) * 100)}%`, label: "Matrix coverage" },
         ].map(({ value, label }) => (
           <div key={label} style={S.stat}>
             <span style={S.statValue}>{value}</span>
@@ -559,7 +608,7 @@ function Checkpoint({ ratings, totalPairs, sessionId, onContinue, onDone }) {
         ))}
       </div>
 
-      {/* Personal concept map — ForceGraph when sparse, MDS once enough data */}
+      {/* Personal concept map */}
       {conceptsInSession.length >= 5 && (
         <div
           ref={graphContainerRef}
@@ -579,6 +628,7 @@ function Checkpoint({ ratings, totalPairs, sessionId, onContinue, onDone }) {
                 width={Math.max(graphWidth - 32, 280)}
                 height={Math.round(Math.max(graphWidth - 32, 280) * 0.75)}
                 showLegend={true}
+                defaultShowLabels={true}
                 label={`Your concept map — ${conceptsInSession.length} concepts`}
               />
             ) : (
@@ -587,6 +637,7 @@ function Checkpoint({ ratings, totalPairs, sessionId, onContinue, onDone }) {
                 width={Math.max(graphWidth - 32, 280)}
                 height={Math.round(Math.max(graphWidth - 32, 280) * 0.62)}
                 showLegend={true}
+                defaultShowLabels={true}
                 label={`Your concept network — ${conceptsInSession.length} concepts`}
               />
             )}
@@ -625,7 +676,7 @@ function Checkpoint({ ratings, totalPairs, sessionId, onContinue, onDone }) {
       <p style={{ ...S.p, color: "#666", fontSize: "0.72rem" }}>
         Your responses have been saved anonymously.
         {hasMore
-          ? " You can rate more pairs to improve matrix coverage — each additional response helps."
+          ? " Rate more pairs to fill in your map — each batch of 20 adds new concepts and refines the layout."
           : " You've rated all available pairs. Thank you for your thoroughness."}
       </p>
 
@@ -647,20 +698,12 @@ function Checkpoint({ ratings, totalPairs, sessionId, onContinue, onDone }) {
         >
           {copied ? "Link copied ✓" : "Share your map"}
         </button>
-        {hasMore && (
-          <button style={{ ...S.btnSecondary, fontSize: "0.6rem" }} onClick={() => navigate("/results")}>
-            I'm done for now →
-          </button>
-        )}
       </div>
     </div>
   );
 }
 
 // ─── Persistent session helpers ───────────────────────────────────────────────
-// We store a stable session ID in localStorage so the same browser can't
-// submit unlimited duplicate surveys. On refresh the same session resumes;
-// only a localStorage clear or a different browser yields a new session.
 
 function getOrCreateSessionId() {
   try {
@@ -686,14 +729,19 @@ function hasCompletedBefore() {
 
 export default function Survey() {
   const [phase, setPhase]             = useState(PHASE.PRIVACY);
-  const [allPairs, setAllPairs]       = useState([]);    // all 1953 shuffled for this session
-  const [batchStart, setBatchStart]   = useState(0);     // index into allPairs for current batch
+  const [allPairs, setAllPairs]       = useState([]);
+  const [batchStart, setBatchStart]   = useState(0);
   const [batchSize, setBatchSize]     = useState(FIRST_BATCH_SIZE);
-  const [pairIdx, setPairIdx]         = useState(0);     // within current batch
-  const [ratings, setRatings]         = useState([]);    // accumulated across all batches
+  const [pairIdx, setPairIdx]         = useState(0);
+  const [ratings, setRatings]         = useState([]);
   const [sessionId]                   = useState(() => getOrCreateSessionId());
   const [alreadyCompleted]            = useState(() => hasCompletedBefore());
   const [error, setError]             = useState(null);
+
+  // Undo state: tracks the previous pairIdx so we can rewind one step.
+  // Cleared automatically after 4 seconds or when the batch ends.
+  const [undoData, setUndoData]       = useState(null); // { prevPairIdx } | null
+  const undoTimerRef                  = useRef(null);
 
   // ── Start: claim session, load all pairs ───────────────────────────────────
 
@@ -702,10 +750,8 @@ export default function Survey() {
       const idx = await claimSessionIndex();
       const pairs = getAllPairsForSession(idx);
       setAllPairs(pairs);
-      await createSession(sessionId); // no-op for returning users (duplicate key silently ignored)
+      await createSession(sessionId);
 
-      // Load any previously saved responses so the checkpoint graph and
-      // stats reflect the user's full history, not just the current visit.
       try {
         const existing = await fetchSessionResponses(sessionId);
         if (existing.length > 0) {
@@ -722,8 +768,7 @@ export default function Survey() {
       setBatchSize(FIRST_BATCH_SIZE);
       setPairIdx(0);
       setPhase(PHASE.QUESTIONS);
-    } catch (err) {
-      // Fallback: use random session index if Supabase is unavailable
+    } catch {
       const fallbackIdx = Math.floor(Math.random() * TOTAL_PAIRS);
       const pairs = getAllPairsForSession(fallbackIdx);
       setAllPairs(pairs);
@@ -744,7 +789,10 @@ export default function Survey() {
     const nextIdx = pairIdx + 1;
 
     if (nextIdx >= batchSize) {
-      // Batch complete — save responses, then advance phase
+      // Batch complete — clear undo (no going back across a save boundary)
+      clearTimeout(undoTimerRef.current);
+      setUndoData(null);
+
       const batchRatings = newRatings.slice(newRatings.length - batchSize);
       saveResponses(sessionId, batchRatings).catch(err =>
         setError("Responses may not have saved: " + err.message)
@@ -752,16 +800,29 @@ export default function Survey() {
 
       if (batchStart === 0) {
         markSessionCompleted();
-        // First batch done → skip demographics for returning users
         setPhase(alreadyCompleted ? PHASE.CHECKPOINT : PHASE.DEMOGRAPHICS);
       } else {
-        // Subsequent batch done → checkpoint
         setPhase(PHASE.CHECKPOINT);
       }
     } else {
+      // Mid-batch — enable undo for 4 seconds
+      const prevIdx = pairIdx;
       setPairIdx(nextIdx);
+      setUndoData({ prevPairIdx: prevIdx });
+      clearTimeout(undoTimerRef.current);
+      undoTimerRef.current = setTimeout(() => setUndoData(null), 4000);
     }
   }, [allPairs, alreadyCompleted, batchStart, batchSize, pairIdx, ratings, sessionId]);
+
+  // ── Undo last rating ───────────────────────────────────────────────────────
+
+  const handleUndo = useCallback(() => {
+    if (!undoData) return;
+    setRatings(prev => prev.slice(0, -1));
+    setPairIdx(undoData.prevPairIdx);
+    setUndoData(null);
+    clearTimeout(undoTimerRef.current);
+  }, [undoData]);
 
   // ── Demographics submitted ─────────────────────────────────────────────────
 
@@ -792,16 +853,14 @@ export default function Survey() {
     const remaining = allPairs.length - nextStart;
     const nextBatchSize = Math.min(CONTINUED_BATCH_SIZE, remaining);
 
-    if (nextBatchSize <= 0) return; // shouldn't happen; guard anyway
+    if (nextBatchSize <= 0) return;
 
     setBatchStart(nextStart);
     setBatchSize(nextBatchSize);
     setPairIdx(0);
+    setUndoData(null);
     setPhase(PHASE.QUESTIONS);
   }, [allPairs, batchStart, batchSize]);
-
-  // ── Done (user opts out) ───────────────────────────────────────────────────
-  // Just stays on the checkpoint view — the "Explore" button takes them away
 
   // ── Current pair ──────────────────────────────────────────────────────────
 
@@ -833,10 +892,10 @@ export default function Survey() {
         <SurveyQuestion
           pair={currentPair}
           onRate={handleRate}
+          onUndo={handleUndo}
+          canUndo={!!undoData}
           ratedInBatch={pairIdx}
           batchSize={batchSize}
-          totalRated={ratings.length}
-          totalPairs={TOTAL_PAIRS}
         />
       )}
 

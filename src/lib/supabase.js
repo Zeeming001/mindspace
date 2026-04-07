@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { CONCEPTS } from "./concepts";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -87,12 +88,19 @@ export async function fetchGroupPositions(groupKey) {
 
 /**
  * Fetch response counts per group key (for the explore page meta-info).
+ *
+ * n_responses is stored identically on every row for a given group_key, so we
+ * only need one row per group. We use CONCEPTS[0] as the sentinel — it's
+ * defined in concepts.js and will always exist in aggregate_positions once the
+ * Edge Function has run. Tying the sentinel to the live concept list means any
+ * rename will produce an obvious breakage rather than a silent wrong value.
  */
 export async function fetchGroupCounts() {
+  const sentinel = CONCEPTS[0]; // "Intellectual" — first entry in concepts.js
   const { data, error } = await supabase
     .from("aggregate_positions")
     .select("group_key, n_responses")
-    .eq("concept", "Kind"); // sentinel: stable concept present in all groups
+    .eq("concept", sentinel);
 
   if (error) throw error;
   const counts = {};
@@ -150,4 +158,9 @@ export async function exportPairCoverage(token) {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-export const MIN_RESPONDENTS = 15; // minimum before showing a group's map
+// Minimum completed sessions before a group's map is shown publicly.
+// At 15 respondents × 20 pairs each, only ~15% of the 1,953-pair matrix is
+// covered; the remaining 85% is neutral-imputed, making the layout mostly
+// noise. 50 respondents (~1,000 pair ratings) is the practical minimum for a
+// map with enough real signal to be worth displaying.
+export const MIN_RESPONDENTS = 50;

@@ -12,14 +12,12 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { fetchSessionResponses } from "../lib/supabase";
 import { CONCEPTS } from "../lib/concepts";
 import { LS_SESSION_KEY } from "../lib/session";
+import { MDS_THRESHOLD } from "../lib/constants";
 import { btnPrimary, btnSecondary } from "../styles/buttons";
 import { useContainerWidth } from "../lib/hooks";
 import ForceGraph from "../components/ForceGraph";
 import MDSPlot from "../components/MDSPlot";
 import ErrorBoundary from "../components/ErrorBoundary";
-
-// Mirror the same threshold used in the Survey checkpoint.
-const MDS_THRESHOLD = 40;
 
 const S = {
   page: {
@@ -262,6 +260,7 @@ export default function Results() {
                     width={w}
                     height={Math.round(w * 0.75)}
                     showLegend={true}
+                    defaultShowLabels={true}
                   />
                 ) : (
                   <ForceGraph
@@ -269,6 +268,7 @@ export default function Results() {
                     width={w}
                     height={Math.round(w * 0.62)}
                     showLegend={true}
+                    defaultShowLabels={true}
                   />
                 )}
               </ErrorBoundary>

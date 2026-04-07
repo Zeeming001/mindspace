@@ -84,9 +84,9 @@ export default function About() {
       <h1 style={S.h1}>Methodology &amp; Privacy</h1>
 
       <div style={S.section}>
-        <h2 style={S.h2}>What Mindspace measures</h2>
+        <h2 style={S.h2}>What The Empathy Project measures</h2>
         <p style={S.p}>
-          Mindspace is a psychometric tool designed to map the conceptual distances
+          The Empathy Project is a psychometric tool designed to map the conceptual distances
           between abstract values and ideas as they exist in different people's minds.
           The core hypothesis: people belonging to different identity groups organize
           abstract concepts into meaningfully different mental clusters — and making
