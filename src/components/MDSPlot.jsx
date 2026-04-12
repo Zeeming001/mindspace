@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { CONCEPTS, CONCEPT_COLOR, DOMAINS } from "../lib/concepts";
 import { classicalMDS, buildDistanceMatrix, normalizeCoords, hierarchicalCluster, convexHull } from "../lib/mds";
-import { stressQuality } from "../lib/constants";
+import { stressQuality, TOTAL_CONCEPT_PAIRS } from "../lib/constants";
 
 // Per-cluster fill and stroke colours (cycle through up to 8 clusters).
 // Opacity is intentionally moderate so hulls are visible without overwhelming
@@ -51,11 +51,15 @@ export default function MDSPlot({
   const animFrameRef = useRef(null);
 
   // Compute or use provided coordinates.
-  // Returns { coords: map, stress: number|null }
-  // stress is only available for in-browser MDS (not precomputed positions).
-  const { coords, stress } = useMemo(() => {
+  // Returns { coords: map, stress: number|null, isPersonal: bool, pairsRated: number }
+  // stress is only meaningful for aggregate (precomputed) positions.
+  // For personal maps (responses prop), stress is suppressed because sparse
+  // coverage (~2-5%) and 0.5 neutral imputation produce stress ~0.82+
+  // regardless of data quality — a meaningless and alarming number.
+  const { coords, stress, isPersonal, pairsRated } = useMemo(() => {
     if (positions && positions.length > 0) {
-      // Use precomputed positions (stress not available client-side)
+      // Use precomputed positions. Extract stress from the first row (same for
+      // all rows within a group, stored by the Edge Function).
       const xs = positions.map(p => p.x);
       const ys = positions.map(p => p.y);
       const minX = Math.min(...xs), maxX = Math.max(...xs);
@@ -69,24 +73,34 @@ export default function MDSPlot({
           y: (p.y - minY) / rangeY,
         };
       }
-      return { coords: map, stress: null };
+      // Use stored stress value (available once Edge Function writes it).
+      const aggStress = positions[0]?.stress ?? null;
+      return { coords: map, stress: aggStress, isPersonal: false, pairsRated: 0 };
     }
 
     if (responses && responses.length > 0) {
-      // In-browser MDS — classicalMDS returns stress (Kruskal's stress-1)
-      const filteredConcepts = concepts.filter(c =>
-        responses.some(r => r.concept_a === c || r.concept_b === c)
-      );
-      if (filteredConcepts.length < 3) return { coords: null, stress: null };
+      // In-browser MDS — only include concepts the user has actually rated.
+      // Concepts with no ratings get neutral-imputed at 0.5 for ALL their
+      // pairs, causing them to cluster into an uninformative blob at the
+      // map's center. Filtering to rated concepts avoids this.
+      const ratedConcepts = new Set();
+      for (const r of responses) {
+        ratedConcepts.add(r.concept_a);
+        ratedConcepts.add(r.concept_b);
+      }
+      const filteredConcepts = concepts.filter(c => ratedConcepts.has(c));
+      if (filteredConcepts.length < 3) return { coords: null, stress: null, isPersonal: true, pairsRated: responses.length };
       const distMatrix = buildDistanceMatrix(filteredConcepts, responses);
-      const { x, y, stress } = classicalMDS(distMatrix);
+      const { x, y } = classicalMDS(distMatrix);
       const { x: nx, y: ny } = normalizeCoords(x, y);
       const map = {};
       filteredConcepts.forEach((c, i) => { map[c] = { x: nx[i], y: ny[i] }; });
-      return { coords: map, stress };
+      // Do NOT return stress: at typical coverage (2-5%), stress is ~0.82+
+      // due to neutral imputation — alarming but uninformative.
+      return { coords: map, stress: null, isPersonal: true, pairsRated: responses.length };
     }
 
-    return { coords: null, stress: null };
+    return { coords: null, stress: null, isPersonal: false, pairsRated: 0 };
   }, [positions, responses, concepts]);
 
   // Cluster assignments: concept -> integer cluster index.
@@ -402,7 +416,14 @@ export default function MDSPlot({
         lineHeight: 1.5,
       }}>
         Position = relative similarity; axes are arbitrary.
-        {stress !== null && (() => {
+        {isPersonal && pairsRated > 0 && (
+          <span style={{ marginLeft: "0.8rem", color: "#b8a0d4", fontStyle: "normal" }}>
+            {pairsRated} of {TOTAL_CONCEPT_PAIRS} pairs rated
+            {" "}({Math.round(pairsRated / TOTAL_CONCEPT_PAIRS * 100)}% coverage)
+            {" "}— only concepts you've encountered are shown.
+          </span>
+        )}
+        {!isPersonal && stress !== null && (() => {
           const q = stressQuality(stress);
           return (
             <span style={{ marginLeft: "0.8rem", color: q.color, fontStyle: "normal" }}>

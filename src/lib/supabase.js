@@ -73,13 +73,14 @@ export async function createSession(sessionId) {
 
 /**
  * Fetch precomputed MDS positions for a given group key.
- * Returns an array of { concept, x, y, n_responses }.
- * Returns null if n_responses < MIN_RESPONDENTS for any concept.
+ * Returns an array of { concept, x, y, cluster, stress, n_responses, computed_at }.
+ * stress is the group-level Kruskal stress-1 (same value on all rows for this group).
+ * Returns [] if no data exists (group hasn't reached MIN_RESPONDENTS yet).
  */
 export async function fetchGroupPositions(groupKey) {
   const { data, error } = await supabase
     .from("aggregate_positions")
-    .select("concept, x, y, cluster, n_responses, computed_at")
+    .select("concept, x, y, cluster, stress, n_responses, computed_at")
     .eq("group_key", groupKey);
 
   if (error) throw error;

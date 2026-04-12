@@ -63,6 +63,8 @@ CREATE TABLE IF NOT EXISTS aggregate_positions (
   x            FLOAT   NOT NULL,
   y            FLOAT   NOT NULL,
   cluster      INTEGER,              -- Ward cluster index (0-based), set by Edge Function
+  stress       FLOAT,               -- Kruskal stress-1 for this group's 2D layout
+                                    -- Calibrated range for n=61: ~0.40 (excellent) to ~0.70 (poor)
   n_responses  INTEGER NOT NULL DEFAULT 0,
   computed_at  TIMESTAMPTZ DEFAULT NOW(),
   PRIMARY KEY (group_key, concept)

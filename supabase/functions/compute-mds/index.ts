@@ -280,6 +280,27 @@ Deno.serve(async (req) => {
       const distMatrix = buildDistanceMatrix(CONCEPTS, responses);
       const { x, y } = classicalMDS(distMatrix);
 
+      // Compute Kruskal's stress-1 for this group's map.
+      // Calibrated range for n=61 concepts in 2D:
+      //   ~0.40 = theoretical floor (full coverage)
+      //   ~0.55 = good (100+ sessions)
+      //   ~0.65 = fair (50 sessions, minimum threshold)
+      //   ~0.70+ = poor (too few respondents)
+      function computeStress(dm: number[][], xs: number[], ys: number[]): number {
+        const n = xs.length;
+        let numerator = 0, denominator = 0;
+        for (let i = 0; i < n; i++) {
+          for (let j = i + 1; j < n; j++) {
+            const dij = dm[i][j];
+            const eij = Math.sqrt((xs[i] - xs[j]) ** 2 + (ys[i] - ys[j]) ** 2);
+            numerator   += (dij - eij) ** 2;
+            denominator += dij * dij;
+          }
+        }
+        return denominator > 0 ? Math.sqrt(numerator / denominator) : 0;
+      }
+      const stress = computeStress(distMatrix, x, y);
+
       // Run Ward hierarchical clustering on the 2D layout
       const clusterAssignments = wardCluster(x, y, 10);
 
@@ -290,6 +311,7 @@ Deno.serve(async (req) => {
         x:           x[i],
         y:           y[i],
         cluster:     clusterAssignments[i],
+        stress:      stress,           // layout quality — same value for all rows in this group
         n_responses: sessionIds.length,
         computed_at: now,
       }));

@@ -152,9 +152,16 @@ export default function About() {
           via power iteration.
         </p>
         <p style={S.p}>
-          Maps are recomputed hourly for all groups with at least 15 respondents.
+          Maps are recomputed hourly for all groups with at least 50 respondents.
           Groups with fewer respondents display a "not enough data" message.
           Axes have no inherent meaning — only relative positions matter.
+        </p>
+        <p style={S.p}>
+          A note on layout quality: with 61 concepts compressed into 2D, some
+          distance distortion is inevitable. Simulation studies show that even
+          with complete data the minimum achievable stress (Kruskal's) is ~0.40.
+          Typical operating stress with sufficient respondents is 0.50–0.60. Domain
+          clustering and group differences are meaningful even at these values.
         </p>
       </div>
 
@@ -172,8 +179,9 @@ export default function About() {
         </p>
         <p style={S.p}>
           Approximately 98 respondents are needed to achieve complete pair
-          coverage at 20 pairs per session. Groups are displayed as soon as 15
-          respondents have contributed.
+          coverage at 20 pairs per session. Groups are displayed as soon as 50
+          respondents have contributed, at which point roughly half of all pairs
+          have been rated at least once and the map structure is stable.
         </p>
       </div>
 
