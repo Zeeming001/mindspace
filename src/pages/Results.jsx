@@ -223,6 +223,67 @@ export default function Results() {
           ))}
         </div>
 
+        {/* MDS unlock progress — shown only before threshold */}
+        {responses.length < MDS_THRESHOLD && isOwnSession && (
+          <div style={{
+            background: "rgba(126,184,212,0.07)",
+            border: "1px solid rgba(126,184,212,0.28)",
+            borderRadius: "4px",
+            padding: "0.85rem 1rem",
+            marginBottom: "1.5rem",
+          }}>
+            <div style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "baseline",
+              marginBottom: "0.55rem",
+            }}>
+              <span style={{
+                fontSize: "0.57rem",
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+                fontFamily: "'IBM Plex Mono', monospace",
+                color: "#4a90b8",
+              }}>
+                Spatial map unlocks at {MDS_THRESHOLD} pairs
+              </span>
+              <span style={{
+                fontSize: "0.65rem",
+                fontFamily: "'IBM Plex Mono', monospace",
+                color: "#7eb8d4",
+              }}>
+                {pairCount} / {MDS_THRESHOLD}
+              </span>
+            </div>
+            {/* Progress bar */}
+            <div style={{
+              height: "4px",
+              background: "rgba(126,184,212,0.18)",
+              borderRadius: "2px",
+              overflow: "hidden",
+              marginBottom: "0.6rem",
+            }}>
+              <div style={{
+                height: "100%",
+                width: `${Math.min((pairCount / MDS_THRESHOLD) * 100, 100)}%`,
+                background: "#7eb8d4",
+                borderRadius: "2px",
+                transition: "width 0.4s ease",
+              }} />
+            </div>
+            <p style={{
+              fontSize: "0.65rem",
+              color: "#4a90b8",
+              margin: 0,
+              lineHeight: 1.6,
+            }}>
+              Rate {MDS_THRESHOLD - pairCount} more pairs to unlock your full spatial concept
+              map — a 2D layout where every concept's position reflects how your mind
+              organises them.
+            </p>
+          </div>
+        )}
+
         {/* Share bar */}
         {isOwnSession && shareUrl && (
           <div style={S.shareBar}>

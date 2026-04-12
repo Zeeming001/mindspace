@@ -103,20 +103,6 @@ const S = {
     marginBottom: "0.75rem",
     letterSpacing: "0.02em",
   }),
-  trackOuter: {
-    position: "relative",
-    height: "64px",           // enough room for dot + label below
-    marginBottom: "0.25rem",
-  },
-  trackLine: {
-    position: "absolute",
-    top: "10px",               // dot center
-    left: "0",
-    right: "0",
-    height: "2px",
-    background: "linear-gradient(to right, #d47e7e44, #e0dbd3, #a8d4a044)",
-    borderRadius: "1px",
-  },
   trackEndLabels: {
     display: "flex",
     justifyContent: "space-between",
@@ -145,74 +131,91 @@ function PairRow({ response }) {
   );
 }
 
+// Truncate a concept name to ~28 chars, breaking at a word boundary
+function truncate(name, max = 28) {
+  if (name.length <= max) return name;
+  const cut = name.lastIndexOf(" ", max);
+  return (cut > 12 ? name.slice(0, cut) : name.slice(0, max)) + "…";
+}
+
 function SpectrumRow({ anchor, coRatings }) {
   const anchorColor = CONCEPT_COLOR[anchor] || "#888";
 
-  // Sort coRatings by rating so labels don't jump around
+  // Sort by rating (left → right)
   const sorted = [...coRatings].sort((a, b) => a.rating - b.rating);
 
-  // Detect which items share the same rating so we can stagger their labels
-  const ratingCounts = {};
-  for (const { rating } of sorted) ratingCounts[rating] = (ratingCounts[rating] || 0) + 1;
-
-  // Assign vertical stagger index per rating group
-  const ratingIdx = {};
+  // Assign a stagger row within each rating group so same-value labels
+  // don't collide. Each stagger row is offset 22px further down.
+  const ratingRowCount = {};
   const positioned = sorted.map(({ other, rating }) => {
-    ratingIdx[rating] = (ratingIdx[rating] || 0);
-    const staggerIdx = ratingIdx[rating];
-    ratingIdx[rating]++;
-    const pct = ((rating - 1) / 4) * 100;  // 1→0%, 5→100%
-    return { other, rating, pct, staggerIdx };
+    const row = ratingRowCount[rating] || 0;
+    ratingRowCount[rating] = row + 1;
+    // Map rating 1–5 → 0–100%, then clamp 4–96% so edge labels stay in frame
+    const pct = Math.max(4, Math.min(96, ((rating - 1) / 4) * 100));
+    return { other, rating, pct, row };
   });
+
+  const maxRow = Math.max(...positioned.map(p => p.row));
+  // Track sits at top:6px; dot is 10px tall; labels start at top:22px;
+  // each stagger adds 20px
+  const outerHeight = 22 + (maxRow + 1) * 20 + 4;
 
   return (
     <div style={S.spectrumWrapper}>
       <span style={S.anchorChip(anchorColor)}>{anchor}</span>
-      <div style={S.trackOuter}>
-        <div style={S.trackLine} />
-        {positioned.map(({ other, rating, pct, staggerIdx }) => {
+      <div style={{ position: "relative", height: `${outerHeight}px`, marginBottom: "0.15rem" }}>
+        {/* Gradient track */}
+        <div style={{
+          position: "absolute",
+          top: "11px",
+          left: 0, right: 0,
+          height: "2px",
+          background: "linear-gradient(to right, #d47e7e55, #e0dbd3, #a8d4a055)",
+          borderRadius: "1px",
+        }} />
+
+        {positioned.map(({ other, rating, pct, row }) => {
           const dotColor = CONCEPT_COLOR[other] || "#888";
-          // Stagger labels below for same-rating items
-          const labelTop = 24 + staggerIdx * 14;
+          const labelTop = 22 + row * 20;
+
+          // Edge-aware horizontal alignment:
+          // left zone  (<15%): anchor label to the left of dot → no negative x
+          // right zone (>85%): anchor label to the right of dot → won't overflow
+          // middle: centre on dot
+          const labelTransform =
+            pct < 15 ? "none" :
+            pct > 85 ? "translateX(-100%)" :
+            "translateX(-50%)";
+
           return (
-            <div
-              key={other}
-              style={{
-                position: "absolute",
-                left: `${pct}%`,
-                top: "0",
-                transform: "translateX(-50%)",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                pointerEvents: "none",
-              }}
-            >
-              {/* dot on the track line */}
+            <div key={other} style={{ position: "absolute", left: `${pct}%`, top: 0, pointerEvents: "none" }}>
+              {/* Dot */}
               <div style={{
+                position: "absolute",
+                top: "6px",
+                left: "50%",
+                transform: "translateX(-50%)",
                 width: "10px",
                 height: "10px",
                 borderRadius: "50%",
                 background: dotColor,
                 border: "2px solid #fff",
                 boxShadow: `0 0 0 1px ${dotColor}`,
-                flexShrink: 0,
-                marginTop: "5px",   // center on track line (top:10px - half height)
               }} />
-              {/* label below */}
+              {/* Label */}
               <div style={{
                 position: "absolute",
                 top: `${labelTop}px`,
-                fontSize: "0.58rem",
+                left: 0,
+                transform: labelTransform,
+                fontSize: "0.57rem",
                 color: dotColor,
-                whiteSpace: "nowrap",
                 fontFamily: "'IBM Plex Mono', monospace",
                 letterSpacing: "0.02em",
-                maxWidth: "110px",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                lineHeight: 1.3,
               }}>
-                {other}
+                {truncate(other)}
               </div>
             </div>
           );
