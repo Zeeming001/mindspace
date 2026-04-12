@@ -21,7 +21,41 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { CONCEPTS_BY_DOMAIN, CONCEPTS } from "../../../src/lib/concepts.js";
+
+// ── Concepts list (inlined to avoid fragile relative-path imports in Deno) ──
+// Keep in sync with src/lib/concepts.js
+const CONCEPTS: string[] = [
+  // Knowledge & Ways of Knowing
+  "Intellectual", "Rational", "Scientific", "Intuitive", "Mystical", "Practical",
+  // Religion & Worldview
+  "Devout", "Atheist", "Spiritual", "Deeply concerned with personal guilt",
+  "Believes in grace", "Reverent",
+  // Moral Values & Virtues
+  "Just", "Merciful", "Loyal", "Deferential to authority", "Caring",
+  "Emphasizes moral purity", "Principled",
+  // Politics & Governance
+  "Values personal liberty", "Egalitarian", "Values security", "Seeks order",
+  "Democratic", "Traditionalist", "Patriotic",
+  // Society & Culture
+  "Family-oriented", "Pro-marriage", "Sexually liberated", "LGBTQ+ affirming",
+  "Pro-religious liberty", "Supports multiculturalism",
+  // Bodies, Harm & Autonomy
+  "Pro-choice", "Emphasizes bodily sovereignty", "Emphasizes consent",
+  "Emphasizes human interdependence",
+  // Law & Justice System
+  "Pro-police", "Emphasizes rehabilitative justice", "Emphasizes punitive justice",
+  "Tough on crime", "Emphasizes free speech", "Tolerates government surveillance",
+  "Believes in the death penalty", "Emphasizes reconciliation",
+  // Economy & Social Order
+  "Supports a welfare state", "Supports a free-market economy", "Believes in meritocracy",
+  "Tolerates inequality in society", "Cares about promoting economic equality in society",
+  // Aesthetics & Meta-Values
+  "Driven by the desire for beauty", "Driven by the desire for truth",
+  "Driven by the desire for power", "Driven by the desire for meaning",
+  "Driven by the desire for personal authenticity", "Amused by irony",
+  // Identity & Character
+  "Kind", "Honest", "Ambitious", "Humble", "Hardworking", "Believes in luck",
+];
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;

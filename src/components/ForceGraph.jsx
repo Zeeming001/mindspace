@@ -16,6 +16,8 @@ import { CONCEPT_COLOR, DOMAINS } from "../lib/concepts";
  *   label            - optional header label string
  *   defaultShowLabels - whether labels start visible (default false for dense
  *                       maps, true for sparse personal maps)
+ *   onConceptClick   - optional callback(conceptName) fired when a node is clicked
+ *   selectedConcept  - optional concept name to highlight as selected
  */
 
 // ─── Physics constants ─────────────────────────────────────────────────────
@@ -47,6 +49,8 @@ export default function ForceGraph({
   showLegend        = true,
   label             = null,
   defaultShowLabels = false,
+  onConceptClick    = null,
+  selectedConcept   = null,
 }) {
   const [hovered,    setHovered]    = useState(null);
   const [showLabels, setShowLabels] = useState(defaultShowLabels);
@@ -293,6 +297,11 @@ export default function ForceGraph({
         lineHeight: 1.5,
       }}>
         Each node is a concept you've rated. Edges connect rated pairs — thicker &amp; darker means more similar.
+        {onConceptClick && (
+          <span style={{ marginLeft: "0.6rem", color: "#b8a0d4" }}>
+            Click any concept to learn more.
+          </span>
+        )}
       </div>
 
       <svg
@@ -335,12 +344,14 @@ export default function ForceGraph({
         {/* Nodes */}
         {nodes.map((concept, i) => {
           if (!positions[i]) return null;
-          const px        = positions[i].x;
-          const py        = positions[i].y;
-          const color     = CONCEPT_COLOR[concept];
-          const isHovered = hovered === concept;
-          const showLabel = (showLabels && visibleLabels.has(concept)) || isHovered;
+          const px         = positions[i].x;
+          const py         = positions[i].y;
+          const color      = CONCEPT_COLOR[concept];
+          const isHovered  = hovered === concept;
+          const isSelected = selectedConcept === concept;
+          const showLabel  = (showLabels && visibleLabels.has(concept)) || isHovered || isSelected;
           const { textAnchor, dx, dy } = labelAnchor(px, py);
+          const dotR = isHovered || isSelected ? 7 : 5;
 
           return (
             <g
@@ -348,22 +359,34 @@ export default function ForceGraph({
               onMouseEnter={() => setHovered(concept)}
               onMouseLeave={() => setHovered(null)}
               onMouseDown={(e) => onNodeMouseDown(e, i)}
-              style={{ cursor: "grab" }}
+              onClick={() => onConceptClick && onConceptClick(concept)}
+              style={{ cursor: onConceptClick ? "pointer" : "grab" }}
             >
+              {/* Selection ring */}
+              {isSelected && (
+                <circle
+                  cx={px} cy={py}
+                  r={dotR + 4}
+                  fill="none"
+                  stroke={color}
+                  strokeWidth={1.5}
+                  opacity={0.45}
+                />
+              )}
               <circle
                 cx={px} cy={py}
-                r={isHovered ? 7 : 5}
+                r={dotR}
                 fill={color}
-                opacity={isHovered ? 1 : 0.8}
-                filter={isHovered ? "url(#fg-glow)" : "none"}
+                opacity={isHovered || isSelected ? 1 : 0.8}
+                filter={isHovered || isSelected ? "url(#fg-glow)" : "none"}
                 style={{ transition: "r 0.15s, opacity 0.15s" }}
               />
               {showLabel && (
                 <text
                   x={px + dx} y={py + dy}
                   textAnchor={textAnchor}
-                  fontSize={isHovered ? 10.5 : 8.5}
-                  fill={isHovered ? color : "#555"}
+                  fontSize={isHovered || isSelected ? 10.5 : 8.5}
+                  fill={isHovered || isSelected ? color : "#555"}
                   fontFamily="'IBM Plex Mono', monospace"
                   style={{ userSelect: "none", pointerEvents: "none" }}
                 >

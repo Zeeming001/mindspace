@@ -32,6 +32,8 @@ const CLUSTER_STROKE = [
  *   label             - optional header label string
  *   defaultShowLabels - whether labels start visible (default false for dense
  *                       aggregate maps, true for personal maps)
+ *   onConceptClick    - optional callback(conceptName) fired when a dot is clicked
+ *   selectedConcept   - optional concept name to highlight as selected
  */
 export default function MDSPlot({
   positions         = null,
@@ -43,6 +45,8 @@ export default function MDSPlot({
   loading           = false,
   label             = null,
   defaultShowLabels = false,
+  onConceptClick    = null,
+  selectedConcept   = null,
 }) {
   const [hovered, setHovered] = useState(null);
   const [showLabels, setShowLabels] = useState(defaultShowLabels);
@@ -368,24 +372,39 @@ export default function MDSPlot({
           const cy = toSvgY(c.y);
           const color = CONCEPT_COLOR[concept];
           const isHovered = hovered === concept;
+          const isSelected = selectedConcept === concept;
           const { anchor, dx, dy } = labelPlacement(c.x, c.y);
 
-          // Show label if: collision-safe in all-labels mode, OR this dot is hovered
-          const renderLabel = (showLabels && visibleLabels.has(concept)) || isHovered;
+          // Show label if: collision-safe in all-labels mode, OR this dot is hovered/selected
+          const renderLabel = (showLabels && visibleLabels.has(concept)) || isHovered || isSelected;
+
+          const dotR = isHovered || isSelected ? 7 : 5;
 
           return (
             <g
               key={concept}
               onMouseEnter={() => setHovered(concept)}
               onMouseLeave={() => setHovered(null)}
-              style={{ cursor: "default" }}
+              onClick={() => onConceptClick && onConceptClick(concept)}
+              style={{ cursor: onConceptClick ? "pointer" : "default" }}
             >
+              {/* Selection ring */}
+              {isSelected && (
+                <circle
+                  cx={cx} cy={cy}
+                  r={dotR + 4}
+                  fill="none"
+                  stroke={color}
+                  strokeWidth={1.5}
+                  opacity={0.45}
+                />
+              )}
               <circle
                 cx={cx} cy={cy}
-                r={isHovered ? 7 : 5}
+                r={dotR}
                 fill={color}
-                opacity={isHovered ? 1 : 0.75}
-                filter={isHovered ? "url(#glow)" : "none"}
+                opacity={isHovered || isSelected ? 1 : 0.75}
+                filter={isHovered || isSelected ? "url(#glow)" : "none"}
                 style={{ transition: "r 0.15s, opacity 0.15s" }}
               />
               {renderLabel && (
@@ -393,8 +412,8 @@ export default function MDSPlot({
                   x={cx + dx}
                   y={cy + dy}
                   textAnchor={anchor}
-                  fontSize={isHovered ? 10.5 : 8.5}
-                  fill={isHovered ? color : "#555"}
+                  fontSize={isHovered || isSelected ? 10.5 : 8.5}
+                  fill={isHovered || isSelected ? color : "#555"}
                   fontFamily="'IBM Plex Mono', monospace"
                   style={{ transition: "font-size 0.15s, fill 0.15s", userSelect: "none", pointerEvents: "none" }}
                 >
@@ -416,6 +435,11 @@ export default function MDSPlot({
         lineHeight: 1.5,
       }}>
         Position = relative similarity; axes are arbitrary.
+        {onConceptClick && (
+          <span style={{ marginLeft: "0.8rem", fontStyle: "normal", color: "#b8a0d4" }}>
+            Click any concept to learn more.
+          </span>
+        )}
         {isPersonal && pairsRated > 0 && (
           <span style={{ marginLeft: "0.8rem", color: "#b8a0d4", fontStyle: "normal" }}>
             {pairsRated} of {TOTAL_CONCEPT_PAIRS} pairs rated

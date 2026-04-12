@@ -6,10 +6,41 @@ import { fetchGroupPositions, fetchGroupCounts, fetchSessionResponses, MIN_RESPO
 import { SAMPLE_POSITIONS } from "../lib/samplePositions";
 import MDSPlot from "../components/MDSPlot";
 import ForceGraph from "../components/ForceGraph";
+import ConceptModal from "../components/ConceptModal";
 import ErrorBoundary from "../components/ErrorBoundary";
 import { LS_SESSION_KEY } from "../lib/session";
 import { btnPrimarySmall } from "../styles/buttons";
 import { useContainerWidth } from "../lib/hooks";
+
+// ── Group observation prompts ──────────────────────────────────────────────
+// Brief, pointed observations that help naive users notice meaningful
+// structural differences when they switch between group maps.
+const GROUP_OBSERVATIONS = {
+  "all": {
+    title: "All respondents — what to look for",
+    body: "This map averages across everyone. Look for broad domain clusters: do Law concepts sit apart from Moral ones? Do Knowledge and Aesthetics concepts share a neighbourhood? These patterns are the baseline — group-specific maps will show you where agreement breaks down.",
+  },
+  "political:left": {
+    title: "Liberal map — what to look for",
+    body: "Notice where \"Pro-choice\" sits relative to \"Values personal liberty\" and \"Emphasizes bodily sovereignty\" — do they cluster as a coherent rights framework? Also watch for \"LGBTQ+ affirming\" and \"Egalitarian\" pulling together, and where \"Traditionalist\" and \"Patriotic\" land relative to the rest.",
+  },
+  "political:center": {
+    title: "Centrist map — what to look for",
+    body: "Centrist maps often show less extreme clustering on contested concepts. Look for whether \"Pro-choice\" and \"Pro-religious liberty\" sit at a similar distance from each other, and whether \"Democratic\" sits near concepts from both sides of the political spectrum.",
+  },
+  "political:right": {
+    title: "Conservative map — what to look for",
+    body: "Notice how \"Patriotic,\" \"Loyal,\" and \"Traditionalist\" cluster together. Compare where \"Pro-police\" and \"Values security\" land relative to \"Seeking order.\" Look for whether \"Believes in meritocracy\" and \"Hardworking\" are close together, and how far \"Supports a welfare state\" sits from \"Values personal liberty.\"",
+  },
+  "religion:religious": {
+    title: "Religious respondents — what to look for",
+    body: "Look for whether \"Devout,\" \"Reverent,\" and \"Believes in grace\" form a tight cluster. Notice how \"Merciful\" and \"Just\" are positioned relative to each other — the tension between mercy and justice is central in many religious traditions. See where \"Emphasizes reconciliation\" lands compared to \"Emphasizes punitive justice.\"",
+  },
+  "religion:secular": {
+    title: "Secular / non-religious respondents — what to look for",
+    body: "Compare where \"Atheist\" sits relative to \"Rational\" and \"Scientific\" — do they cluster as a coherent epistemic worldview? Notice the position of \"Mystical\" and \"Spiritual\" relative to knowledge concepts. Look for whether \"Emphasizes consent\" and \"Emphasizes bodily sovereignty\" form a tight cluster.",
+  },
+};
 
 const S = {
   page: {
@@ -89,21 +120,22 @@ const S = {
     borderRadius: "6px",
     padding: "1rem",
     overflowX: "auto",
+    position: "relative",
   },
-  // Banner shown when rendering simulated data
+  // Banner shown when rendering simulated/placeholder data
   simulatedBanner: {
     display: "flex",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: "0.7rem",
-    background: "rgba(184,136,10,0.05)",
-    border: "1px solid rgba(184,136,10,0.22)",
+    background: "rgba(184,136,10,0.07)",
+    border: "1px solid rgba(184,136,10,0.32)",
     borderRadius: "4px",
-    padding: "0.65rem 1rem",
-    marginBottom: "0.75rem",
-    fontSize: "0.65rem",
-    color: "#b8880a",
-    letterSpacing: "0.04em",
-    lineHeight: 1.6,
+    padding: "0.75rem 1rem",
+    marginBottom: "0.85rem",
+    fontSize: "0.67rem",
+    color: "#96640a",
+    letterSpacing: "0.03em",
+    lineHeight: 1.65,
   },
   meta: {
     display: "flex",
@@ -141,6 +173,25 @@ const S = {
     lineHeight: 1.8,
     marginTop: "1.5rem",
   },
+  observationBox: {
+    background: "rgba(126,184,212,0.06)",
+    border: "1px solid rgba(126,184,212,0.28)",
+    borderRadius: "4px",
+    padding: "0.9rem 1.25rem",
+    marginTop: "1rem",
+    fontSize: "0.7rem",
+    color: "#3a6880",
+    lineHeight: 1.8,
+  },
+  observationTitle: {
+    fontSize: "0.57rem",
+    letterSpacing: "0.18em",
+    textTransform: "uppercase",
+    color: "#7eb8d4",
+    fontFamily: "'IBM Plex Mono', monospace",
+    marginBottom: "0.45rem",
+    display: "block",
+  },
   btnPrimary: { ...btnPrimarySmall, marginTop: "1rem" },
 };
 
@@ -149,6 +200,9 @@ export default function Explore() {
 
   // ── Group selection ─────────────────────────────────────────────────────────
   const [selectedGroupId, setSelectedGroupId] = useState("all");
+
+  // ── Concept modal ───────────────────────────────────────────────────────────
+  const [selectedConcept, setSelectedConcept] = useState(null);
 
   // ── Aggregate map state ─────────────────────────────────────────────────────
   const [positions,   setPositions]   = useState(null);
@@ -180,6 +234,7 @@ export default function Explore() {
     setLoading(true);
     setError(null);
     setPositions(null);
+    setSelectedConcept(null); // clear selection when switching groups
 
     fetchGroupPositions(selectedGroupId)
       .then((data) => {
@@ -217,6 +272,8 @@ export default function Explore() {
   const myConceptCount = myResponses
     ? new Set(myResponses.flatMap(r => [r.concept_a, r.concept_b])).size
     : 0;
+
+  const observation = GROUP_OBSERVATIONS[selectedGroupId];
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -308,6 +365,8 @@ export default function Explore() {
                     height={Math.round(w * 0.75)}
                     showLegend={true}
                     defaultShowLabels={true}
+                    onConceptClick={setSelectedConcept}
+                    selectedConcept={selectedConcept}
                   />
                 ) : (
                   <ForceGraph
@@ -316,6 +375,8 @@ export default function Explore() {
                     height={Math.round(w * 0.74)}
                     showLegend={true}
                     defaultShowLabels={true}
+                    onConceptClick={setSelectedConcept}
+                    selectedConcept={selectedConcept}
                   />
                 )}
               </ErrorBoundary>
@@ -338,13 +399,15 @@ export default function Explore() {
             <div>
               {showSample && (
                 <div style={S.simulatedBanner}>
-                  <span style={{ fontSize: "0.75rem" }}>⚠</span>
+                  <span style={{ fontSize: "0.8rem", flexShrink: 0, marginTop: "0.05rem" }}>⚠</span>
                   <span>
-                    <strong>Simulated data</strong> — this map is generated from a theoretical
-                    model, not real survey responses. It will be automatically replaced once{" "}
-                    {MIN_RESPONDENTS} respondents have contributed.
+                    <strong style={{ letterSpacing: "0.06em" }}>Placeholder data — not from real respondents.</strong>
+                    {" "}This map was generated from a theoretical model to demonstrate what domain-level clustering
+                    might look like. It will be automatically replaced once {MIN_RESPONDENTS} people have completed the survey.
                     {nResponses !== null && nResponses > 0 && (
-                      <> Currently {nResponses} of {MIN_RESPONDENTS} needed.</>
+                      <span style={{ display: "inline-block", marginLeft: "0.4rem", fontStyle: "italic" }}>
+                        ({nResponses} of {MIN_RESPONDENTS} needed so far.)
+                      </span>
                     )}
                   </span>
                 </div>
@@ -356,6 +419,8 @@ export default function Explore() {
                   width={Math.max(plotWidth - 48, 280)}
                   height={Math.round(Math.max(plotWidth - 48, 280) * 0.74)}
                   showLegend={true}
+                  onConceptClick={setSelectedConcept}
+                  selectedConcept={selectedConcept}
                 />
               </ErrorBoundary>
             </div>
@@ -403,25 +468,35 @@ export default function Explore() {
             </span>
             {showSample && (
               <span style={{ ...S.metaItem, color: "#b8880a" }}>
-                Source: <span style={{ color: "#b8880a" }}>simulated</span>
+                Source: <span style={{ color: "#b8880a", fontStyle: "italic" }}>placeholder (simulated)</span>
               </span>
             )}
           </>
         )}
       </div>
 
+      {/* ── What to look for — group-specific observation prompts ── */}
+      {selectedGroupId !== "mine" && (hasRealData || showSample) && observation && (
+        <div style={S.observationBox}>
+          <span style={S.observationTitle}>{observation.title}</span>
+          {observation.body}
+        </div>
+      )}
+
       {/* ── Callout / explanation ── */}
       {selectedGroupId === "mine" ? (
         <div style={S.callout}>
           {myResponses && myResponses.length >= MDS_THRESHOLD
             ? "Your map uses classical MDS — spatial distance directly reflects how similar you rated each pair of concepts. The layout is computed from your personal distance matrix, with unrated pairs treated as neutral."
-            : "Your network shows only the pairs you've rated — no averages or imputation. Concepts you rated as highly similar are pulled close together; dissimilar pairs are pushed apart. Rate 40+ pairs to unlock the full MDS spatial map."}
+            : "Your network shows only the pairs you've rated — no averages or imputation. Concepts you rated as highly similar are pulled close together; dissimilar pairs are pushed apart. Rate 60+ pairs to unlock the full MDS spatial map."}
         </div>
       ) : (
         <div style={S.callout}>
           {hasRealData
             ? "Maps are recomputed hourly from all submitted responses. Position is determined by classical MDS on the group's aggregate distance matrix. Axes have no inherent meaning — only relative distances matter."
-            : "Real maps are computed hourly once a group reaches the minimum respondent threshold. The simulated map above uses theoretically motivated distances; it shows what domain-level clustering might look like, not what it actually does."}
+            : showSample
+            ? "The map above is a placeholder generated from theoretically motivated distances. It illustrates how domain-level clustering should look once real data arrives — but the specific positions are not empirically grounded. Real maps are computed hourly once a group reaches the minimum respondent threshold."
+            : "Real maps are computed hourly once a group reaches the minimum respondent threshold. Take the survey to help your groups reach that threshold sooner."}
         </div>
       )}
 
@@ -460,6 +535,12 @@ export default function Explore() {
           </div>
         )
       )}
+
+      {/* ── Concept detail modal ── */}
+      <ConceptModal
+        concept={selectedConcept}
+        onClose={() => setSelectedConcept(null)}
+      />
     </div>
   );
 }
