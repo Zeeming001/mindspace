@@ -123,63 +123,38 @@ export async function fetchSessionResponses(sessionId) {
 }
 
 /**
- * Fetch REAL completed-session counts per group key by querying the sessions
- * table directly — NOT the aggregate_positions table (which stores simulated
- * n_responses values that would make every group appear to have real data).
+ * Fetch completed-session counts per group key.
  *
- * Returns an object like:
- *   { all: 12, "political:left": 4, "political:center": 2, ... }
- *
- * Any group not yet in the sessions table returns 0.
+ * Uses the get_group_counts() SECURITY DEFINER RPC so the anon role can
+ * read aggregate counts without a SELECT RLS policy on the sessions table.
+ * Returns an object like: { all: 260, "political:left": 110, ... }
  */
 export async function fetchRealGroupCounts() {
-  // Base query: all completed sessions
-  const { count: allCount, error: allErr } = await supabase
-    .from("sessions")
-    .select("*", { count: "exact", head: true })
-    .not("completed_at", "is", null);
-  if (allErr) throw allErr;
-
-  // Political sub-groups
-  const [leftRes, centerRes, rightRes] = await Promise.all([
-    supabase.from("sessions").select("*", { count: "exact", head: true })
-      .not("completed_at", "is", null).in("political", [1, 2, 3]),
-    supabase.from("sessions").select("*", { count: "exact", head: true })
-      .not("completed_at", "is", null).in("political", [4]),
-    supabase.from("sessions").select("*", { count: "exact", head: true })
-      .not("completed_at", "is", null).in("political", [5, 6, 7]),
-  ]);
-
-  // Religion sub-groups
-  const [religiousRes, secularRes] = await Promise.all([
-    supabase.from("sessions").select("*", { count: "exact", head: true })
-      .not("completed_at", "is", null)
-      .in("religion", ["Christian", "Muslim", "Jewish", "Hindu", "Buddhist", "Other"]),
-    supabase.from("sessions").select("*", { count: "exact", head: true })
-      .not("completed_at", "is", null)
-      .in("religion", ["None"]),
-  ]);
-
+  const { data, error } = await supabase.rpc("get_group_counts");
+  if (error) throw error;
+  // Ensure every group key is present with a numeric value
+  const raw = data || {};
   return {
-    "all":                allCount    ?? 0,
-    "political:left":     leftRes.count   ?? 0,
-    "political:center":   centerRes.count ?? 0,
-    "political:right":    rightRes.count  ?? 0,
-    "religion:religious": religiousRes.count ?? 0,
-    "religion:secular":   secularRes.count   ?? 0,
+    "all":                Number(raw["all"]                ?? 0),
+    "political:left":     Number(raw["political:left"]     ?? 0),
+    "political:center":   Number(raw["political:center"]   ?? 0),
+    "political:right":    Number(raw["political:right"]    ?? 0),
+    "religion:religious": Number(raw["religion:religious"] ?? 0),
+    "religion:secular":   Number(raw["religion:secular"]   ?? 0),
   };
 }
 
 /**
  * Count completed sessions (for the live respondent counter on the Home page).
+ *
+ * Uses the get_respondent_count() SECURITY DEFINER RPC — the sessions table
+ * has RLS enabled with no anon SELECT policy, so direct table queries
+ * silently return 0.
  */
 export async function fetchRespondentCount() {
-  const { count, error } = await supabase
-    .from("sessions")
-    .select("*", { count: "exact", head: true })
-    .not("completed_at", "is", null);
+  const { data, error } = await supabase.rpc("get_respondent_count");
   if (error) throw error;
-  return count ?? 0;
+  return Number(data ?? 0);
 }
 
 // ─── Admin export ────────────────────────────────────────────────────────────
