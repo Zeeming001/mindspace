@@ -19,6 +19,7 @@ import {
   exportPairCoverage,
   fetchRespondentCount,
   fetchGroupPositions,
+  fetchRealGroupCounts,
 } from "../lib/supabase";
 import { GROUPS } from "../lib/concepts";
 import { MIN_RESPONDENTS } from "../lib/supabase";
@@ -401,26 +402,34 @@ function GroupStatusTable({ token }) {
 
   useEffect(() => {
     if (!token) return;
-    Promise.all(
-      GROUPS.map(async (g) => {
-        try {
-          const data = await fetchGroupPositions(g.id);
-          if (!data || data.length === 0) {
-            return { id: g.id, label: g.label, n: 0, stress: null, computed_at: null };
+    // Fetch real session counts and MDS metadata (stress, computed_at) separately.
+    // aggregate_positions.n_responses reflects simulated/sample data and must not
+    // be used for respondent counts — use the get_group_counts() RPC instead.
+    Promise.all([
+      fetchRealGroupCounts().catch(() => ({})),
+      Promise.all(
+        GROUPS.map(async (g) => {
+          try {
+            const data = await fetchGroupPositions(g.id);
+            if (!data || data.length === 0) return { id: g.id, stress: null, computed_at: null };
+            return { id: g.id, stress: data[0].stress ?? null, computed_at: data[0].computed_at ?? null };
+          } catch {
+            return { id: g.id, stress: null, computed_at: null };
           }
-          const first = data[0];
-          return {
-            id: g.id,
-            label: g.label,
-            n: first.n_responses ?? 0,
-            stress: first.stress ?? null,
-            computed_at: first.computed_at ?? null,
-          };
-        } catch {
-          return { id: g.id, label: g.label, n: "—", stress: null, computed_at: null };
-        }
-      })
-    ).then(setRows);
+        })
+      ),
+    ]).then(([counts, mdsRows]) => {
+      const mdsByGroup = Object.fromEntries(mdsRows.map(r => [r.id, r]));
+      setRows(
+        GROUPS.map(g => ({
+          id: g.id,
+          label: g.label,
+          n: counts[g.id] ?? 0,
+          stress: mdsByGroup[g.id]?.stress ?? null,
+          computed_at: mdsByGroup[g.id]?.computed_at ?? null,
+        }))
+      );
+    });
   }, [token]);
 
   if (!rows) return <div style={S.loadingText}>Loading group status…</div>;

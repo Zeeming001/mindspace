@@ -768,6 +768,13 @@ export default function Survey() {
         setError("Responses may not have saved: " + err.message)
       );
 
+      // Persist completed_at to DB so the session is counted in group stats.
+      // saveSession upserts only the provided columns, so existing demographics
+      // are preserved on the ON CONFLICT path.
+      saveSession(sessionId, {}).catch(err =>
+        console.warn("Could not mark session complete:", err.message)
+      );
+
       if (batchStart === 0) {
         markSessionCompleted();
         setPhase(alreadyCompleted ? PHASE.CHECKPOINT : PHASE.DEMOGRAPHICS);
