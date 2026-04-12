@@ -118,18 +118,20 @@ export default function About() {
           between-group signal while minimizing empathy-corrosive framing. Several
           concepts are deliberately ambiguous across groups:{" "}
           <span style={S.highlight}>Devout</span> and{" "}
-          <span style={S.highlight}>Atheist</span> cluster together for some
+          <span style={S.highlight}>Atheist</span> may cluster together for some
           respondents (shared intensity of belief) and at opposite poles for
-          others; <span style={S.highlight}>Amused by irony</span> correlates
+          others; <span style={S.highlight}>Amused by irony</span> may correlate
           with certain epistemic dispositions across the political spectrum;{" "}
-          <span style={S.highlight}>Traditionalist</span> sits near{" "}
+          <span style={S.highlight}>Traditionalist</span> might sit near{" "}
           <span style={S.highlight}>Patriotic</span> for some groups and near{" "}
-          <span style={S.highlight}>Reverent</span> for others.
+          <span style={S.highlight}>Reverent</span> for others — or the data
+          may tell a different story entirely.
         </p>
         <p style={S.p}>
-          Demographic questions appear after answering at least twenty survey questions. Pre-survey
-          identity priming activates social desirability bias and degrades the
-          associative validity of responses.
+          Demographic questions appear after answering at least twenty survey questions.
+          Asking identity questions before the task can activate social desirability
+          bias and may degrade the associative validity of responses — so the
+          ordering is intentional.
         </p>
       </div>
 

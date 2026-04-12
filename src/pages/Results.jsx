@@ -18,6 +18,7 @@ import { useContainerWidth } from "../lib/hooks";
 import ForceGraph from "../components/ForceGraph";
 import MDSPlot from "../components/MDSPlot";
 import ErrorBoundary from "../components/ErrorBoundary";
+import ConceptModal from "../components/ConceptModal";
 
 const S = {
   page: {
@@ -106,9 +107,10 @@ const S = {
 export default function Results() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [responses, setResponses]   = useState(null);  // null = loading
-  const [error, setError]           = useState(null);
-  const [copied, setCopied]         = useState(false);
+  const [responses, setResponses]       = useState(null);  // null = loading
+  const [error, setError]               = useState(null);
+  const [copied, setCopied]             = useState(false);
+  const [selectedConcept, setSelectedConcept] = useState(null);
   const [graphContainerRef, graphWidth] = useContainerWidth(660);
 
   // Resolve sessionId: URL param takes priority (shared link),
@@ -261,6 +263,8 @@ export default function Results() {
                     height={Math.round(w * 0.75)}
                     showLegend={true}
                     defaultShowLabels={true}
+                    onConceptClick={setSelectedConcept}
+                    selectedConcept={selectedConcept}
                   />
                 ) : (
                   <ForceGraph
@@ -269,6 +273,8 @@ export default function Results() {
                     height={Math.round(w * 0.62)}
                     showLegend={true}
                     defaultShowLabels={true}
+                    onConceptClick={setSelectedConcept}
+                    selectedConcept={selectedConcept}
                   />
                 )}
               </ErrorBoundary>
@@ -294,6 +300,11 @@ export default function Results() {
           </button>
         </div>
       </div>
+
+      <ConceptModal
+        concept={selectedConcept}
+        onClose={() => setSelectedConcept(null)}
+      />
     </div>
   );
 }

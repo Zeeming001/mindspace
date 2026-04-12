@@ -123,6 +123,54 @@ export async function fetchSessionResponses(sessionId) {
 }
 
 /**
+ * Fetch REAL completed-session counts per group key by querying the sessions
+ * table directly — NOT the aggregate_positions table (which stores simulated
+ * n_responses values that would make every group appear to have real data).
+ *
+ * Returns an object like:
+ *   { all: 12, "political:left": 4, "political:center": 2, ... }
+ *
+ * Any group not yet in the sessions table returns 0.
+ */
+export async function fetchRealGroupCounts() {
+  // Base query: all completed sessions
+  const { count: allCount, error: allErr } = await supabase
+    .from("sessions")
+    .select("*", { count: "exact", head: true })
+    .not("completed_at", "is", null);
+  if (allErr) throw allErr;
+
+  // Political sub-groups
+  const [leftRes, centerRes, rightRes] = await Promise.all([
+    supabase.from("sessions").select("*", { count: "exact", head: true })
+      .not("completed_at", "is", null).in("political", [1, 2, 3]),
+    supabase.from("sessions").select("*", { count: "exact", head: true })
+      .not("completed_at", "is", null).in("political", [4]),
+    supabase.from("sessions").select("*", { count: "exact", head: true })
+      .not("completed_at", "is", null).in("political", [5, 6, 7]),
+  ]);
+
+  // Religion sub-groups
+  const [religiousRes, secularRes] = await Promise.all([
+    supabase.from("sessions").select("*", { count: "exact", head: true })
+      .not("completed_at", "is", null)
+      .in("religion", ["Christian", "Muslim", "Jewish", "Hindu", "Buddhist", "Other"]),
+    supabase.from("sessions").select("*", { count: "exact", head: true })
+      .not("completed_at", "is", null)
+      .in("religion", ["None"]),
+  ]);
+
+  return {
+    "all":                allCount    ?? 0,
+    "political:left":     leftRes.count   ?? 0,
+    "political:center":   centerRes.count ?? 0,
+    "political:right":    rightRes.count  ?? 0,
+    "religion:religious": religiousRes.count ?? 0,
+    "religion:secular":   secularRes.count   ?? 0,
+  };
+}
+
+/**
  * Count completed sessions (for the live respondent counter on the Home page).
  */
 export async function fetchRespondentCount() {

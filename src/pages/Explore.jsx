@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { CONCEPTS, GROUPS } from "../lib/concepts";
 import { MDS_THRESHOLD } from "../lib/constants";
-import { fetchGroupPositions, fetchGroupCounts, fetchSessionResponses, MIN_RESPONDENTS } from "../lib/supabase";
+import { fetchGroupPositions, fetchRealGroupCounts, fetchSessionResponses, MIN_RESPONDENTS } from "../lib/supabase";
 import { SAMPLE_POSITIONS } from "../lib/samplePositions";
 import MDSPlot from "../components/MDSPlot";
 import ForceGraph from "../components/ForceGraph";
@@ -220,9 +220,11 @@ export default function Explore() {
   const [myLoading,   setMyLoading]   = useState(false);
   const [myError,     setMyError]     = useState(null);
 
-  // Load group counts once on mount
+  // Load REAL group counts once on mount (queries the sessions table directly,
+  // not aggregate_positions — avoids the simulated n_responses=80 values
+  // making every group appear to have real data).
   useEffect(() => {
-    fetchGroupCounts()
+    fetchRealGroupCounts()
       .then(setCounts)
       .catch(() => {}); // non-fatal
   }, []);
@@ -265,7 +267,11 @@ export default function Explore() {
   // ── Derived values ──────────────────────────────────────────────────────────
   const selectedGroup    = GROUPS.find(g => g.id === selectedGroupId);
   const nResponses       = counts[selectedGroupId] ?? null;
+  // nResponses comes from the real sessions table — null means the count
+  // hasn't loaded yet; 0 or below MIN_RESPONDENTS means no real data.
   const hasRealData      = nResponses !== null && nResponses >= MIN_RESPONDENTS;
+  // Only the "all" group has a placeholder map; other groups just show a
+  // "not enough data" message until real responses arrive.
   const showSample       = !hasRealData && selectedGroupId === "all";
   const displayPositions = hasRealData ? positions : (showSample ? SAMPLE_POSITIONS : null);
 
@@ -300,7 +306,7 @@ export default function Explore() {
               {g.label}
               {counts[g.id] !== undefined && (
                 <span style={{ marginLeft: "0.4rem", opacity: 0.5 }}>
-                  n={counts[g.id]}
+                  n={counts[g.id] ?? 0}
                 </span>
               )}
             </button>

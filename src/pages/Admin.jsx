@@ -1,24 +1,34 @@
 /**
- * Admin.jsx — Project owner data export page.
+ * Admin.jsx — Project owner dashboard + data export page.
  *
  * Accessible at /admin. Not linked from the nav — navigate there directly.
  * Requires the admin token set in the Supabase settings table.
  *
- * Provides three CSV downloads:
- *   1. Full dataset  — every rating with demographics attached (main analysis file)
- *   2. Sessions      — one row per respondent with demographic breakdown
- *   3. Pair coverage — mean rating per concept pair (anonymised aggregate)
+ * After authentication, shows:
+ *   - Summary stats (total sessions, total ratings, sessions today/this week)
+ *   - Demographic breakdown charts (political, religion, age, gender, education)
+ *   - Group map status table (n, stress, quality grade, last computed)
+ *   - Recent session activity (last 10 completed sessions)
+ *   - CSV export cards for full analysis files
  */
 
-import { useState } from "react";
-import { exportFullData, exportSessionsData, exportPairCoverage, fetchRespondentCount } from "../lib/supabase";
+import { useState, useEffect } from "react";
+import {
+  exportFullData,
+  exportSessionsData,
+  exportPairCoverage,
+  fetchRespondentCount,
+  fetchGroupPositions,
+} from "../lib/supabase";
+import { GROUPS } from "../lib/concepts";
+import { MIN_RESPONDENTS } from "../lib/supabase";
 
 // ── CSV utilities ─────────────────────────────────────────────────────────────
 
 function toCSV(rows) {
   if (!rows || rows.length === 0) return "";
   const headers = Object.keys(rows[0]);
-  const escape  = (v) => {
+  const escape = (v) => {
     if (v === null || v === undefined) return "";
     const s = String(v);
     return s.includes(",") || s.includes('"') || s.includes("\n")
@@ -31,23 +41,50 @@ function toCSV(rows) {
 }
 
 function downloadCSV(filename, rows) {
-  const csv  = toCSV(rows);
+  const csv = toCSV(rows);
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement("a");
-  a.href     = url;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// ── Analytics helpers ─────────────────────────────────────────────────────────
+
+function countBy(rows, field) {
+  const counts = {};
+  for (const row of rows) {
+    const val = row[field] ?? "Unknown";
+    counts[val] = (counts[val] || 0) + 1;
+  }
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([label, n]) => ({ label, n }));
+}
+
+function sessionsInDays(sessions, days) {
+  const cutoff = new Date(Date.now() - days * 86400000).toISOString();
+  return sessions.filter(s => s.completed_at && s.completed_at > cutoff).length;
+}
+
+// Kruskal stress → quality label
+function stressLabel(stress) {
+  if (stress == null) return { text: "—", color: "#aaa" };
+  if (stress < 0.45)  return { text: "Excellent", color: "#6ab04c" };
+  if (stress < 0.55)  return { text: "Good",      color: "#78c37e" };
+  if (stress < 0.65)  return { text: "Fair",       color: "#e8c547" };
+  return                     { text: "Poor",       color: "#d47e7e" };
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const S = {
   page: {
-    maxWidth: "640px",
+    maxWidth: "760px",
     margin: "0 auto",
-    padding: "3rem 1.5rem",
+    padding: "3rem 1.5rem 5rem",
   },
   label: {
     fontSize: "0.62rem",
@@ -63,6 +100,14 @@ const S = {
     fontWeight: 400,
     color: "#1a1a1e",
     marginBottom: "1.4rem",
+  },
+  h3: {
+    fontSize: "0.62rem",
+    letterSpacing: "0.18em",
+    color: "#7eb8d4",
+    textTransform: "uppercase",
+    marginBottom: "1rem",
+    marginTop: "0",
   },
   p: {
     fontSize: "0.78rem",
@@ -105,29 +150,131 @@ const S = {
   },
   divider: {
     borderTop: "1px solid #e0dbd3",
-    margin: "2rem 0",
+    margin: "2.5rem 0",
   },
-  statRow: {
+  section: {
+    marginBottom: "2.5rem",
+  },
+  // ── Summary stat tiles
+  statGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+    gap: "1rem",
+    marginBottom: "0.5rem",
+  },
+  statTile: {
+    background: "#ffffff",
+    border: "1px solid #e0dbd3",
+    borderRadius: "6px",
+    padding: "1.1rem 1.25rem",
     display: "flex",
-    gap: "2rem",
-    flexWrap: "wrap",
-    marginBottom: "2rem",
-    paddingBottom: "1.5rem",
-    borderBottom: "1px solid #e0dbd3",
+    flexDirection: "column",
+    gap: "0.3rem",
   },
-  stat: { display: "flex", flexDirection: "column", gap: "0.3rem" },
   statValue: {
-    fontSize: "1.6rem",
+    fontSize: "1.7rem",
     fontFamily: "'Playfair Display', serif",
     color: "#1a1a1e",
     fontWeight: 400,
+    lineHeight: 1,
   },
   statLabel: {
-    fontSize: "0.58rem",
+    fontSize: "0.56rem",
     letterSpacing: "0.15em",
     color: "#888",
     textTransform: "uppercase",
   },
+  // ── Demographic bars
+  demoGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+    gap: "1.5rem",
+    marginBottom: "0.5rem",
+  },
+  demoCard: {
+    background: "#ffffff",
+    border: "1px solid #e0dbd3",
+    borderRadius: "6px",
+    padding: "1rem 1.25rem",
+  },
+  demoTitle: {
+    fontSize: "0.57rem",
+    letterSpacing: "0.16em",
+    color: "#7eb8d4",
+    textTransform: "uppercase",
+    marginBottom: "0.8rem",
+    fontFamily: "'IBM Plex Mono', monospace",
+  },
+  barRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.5rem",
+    marginBottom: "0.45rem",
+    fontSize: "0.66rem",
+    color: "#555",
+  },
+  barLabel: {
+    width: "110px",
+    flexShrink: 0,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    color: "#444",
+  },
+  barTrack: {
+    flex: 1,
+    height: "8px",
+    background: "#f0ede8",
+    borderRadius: "4px",
+    overflow: "hidden",
+  },
+  barCount: {
+    width: "26px",
+    flexShrink: 0,
+    textAlign: "right",
+    color: "#888",
+    fontFamily: "'IBM Plex Mono', monospace",
+  },
+  // ── Group map status table
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+    fontSize: "0.68rem",
+    color: "#555",
+  },
+  th: {
+    fontSize: "0.55rem",
+    letterSpacing: "0.15em",
+    textTransform: "uppercase",
+    color: "#888",
+    padding: "0.5rem 0.75rem",
+    borderBottom: "1px solid #e0dbd3",
+    textAlign: "left",
+    fontWeight: 400,
+  },
+  td: {
+    padding: "0.6rem 0.75rem",
+    borderBottom: "1px solid #f0ede8",
+    verticalAlign: "middle",
+  },
+  // ── Recent sessions
+  sessionRow: {
+    display: "flex",
+    gap: "1rem",
+    padding: "0.6rem 0",
+    borderBottom: "1px solid #f0ede8",
+    fontSize: "0.66rem",
+    color: "#555",
+    flexWrap: "wrap",
+    alignItems: "center",
+  },
+  sessionId: {
+    fontFamily: "'IBM Plex Mono', monospace",
+    color: "#aaa",
+    fontSize: "0.58rem",
+    minWidth: "100px",
+  },
+  // ── Export cards
   exportCard: {
     border: "1px solid #e0dbd3",
     borderRadius: "6px",
@@ -174,13 +321,52 @@ const S = {
     color: "#d47e7e",
     marginTop: "0.5rem",
   },
+  loadingText: {
+    fontSize: "0.62rem",
+    color: "#aaa",
+    letterSpacing: "0.15em",
+    textTransform: "uppercase",
+    padding: "1rem 0",
+  },
 };
+
+// ── Demographic bar chart component ──────────────────────────────────────────
+
+function DemoCard({ title, data, total }) {
+  if (!data || data.length === 0) return null;
+  const maxN = data[0]?.n ?? 1;
+  return (
+    <div style={S.demoCard}>
+      <div style={S.demoTitle}>{title}</div>
+      {data.slice(0, 8).map(({ label, n }) => (
+        <div key={label} style={S.barRow}>
+          <span style={S.barLabel} title={label}>{label}</span>
+          <div style={S.barTrack}>
+            <div style={{
+              width: `${(n / maxN) * 100}%`,
+              height: "100%",
+              background: "rgba(126,184,212,0.55)",
+              borderRadius: "4px",
+              transition: "width 0.4s ease",
+            }} />
+          </div>
+          <span style={S.barCount}>{n}</span>
+        </div>
+      ))}
+      {total != null && (
+        <div style={{ fontSize: "0.58rem", color: "#bbb", marginTop: "0.5rem" }}>
+          n = {total} completed sessions
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── Export card component ─────────────────────────────────────────────────────
 
 function ExportCard({ title, description, columns, filename, fetcher, token }) {
   const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState(null);
+  const [error, setError] = useState(null);
 
   const handleDownload = async () => {
     setLoading(true);
@@ -208,23 +394,102 @@ function ExportCard({ title, description, columns, filename, fetcher, token }) {
   );
 }
 
+// ── Group map status row ──────────────────────────────────────────────────────
+
+function GroupStatusTable({ token }) {
+  const [rows, setRows] = useState(null);
+
+  useEffect(() => {
+    if (!token) return;
+    Promise.all(
+      GROUPS.map(async (g) => {
+        try {
+          const data = await fetchGroupPositions(g.id);
+          if (!data || data.length === 0) {
+            return { id: g.id, label: g.label, n: 0, stress: null, computed_at: null };
+          }
+          const first = data[0];
+          return {
+            id: g.id,
+            label: g.label,
+            n: first.n_responses ?? 0,
+            stress: first.stress ?? null,
+            computed_at: first.computed_at ?? null,
+          };
+        } catch {
+          return { id: g.id, label: g.label, n: "—", stress: null, computed_at: null };
+        }
+      })
+    ).then(setRows);
+  }, [token]);
+
+  if (!rows) return <div style={S.loadingText}>Loading group status…</div>;
+
+  return (
+    <table style={S.table}>
+      <thead>
+        <tr>
+          <th style={S.th}>Group</th>
+          <th style={S.th}>Respondents</th>
+          <th style={S.th}>Stress</th>
+          <th style={S.th}>Quality</th>
+          <th style={S.th}>Last computed</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map(row => {
+          const q = stressLabel(row.stress);
+          const meetsThreshold = typeof row.n === "number" && row.n >= MIN_RESPONDENTS;
+          return (
+            <tr key={row.id}>
+              <td style={S.td}>{row.label}</td>
+              <td style={{ ...S.td, fontFamily: "'IBM Plex Mono', monospace" }}>
+                {row.n}
+                {typeof row.n === "number" && !meetsThreshold && (
+                  <span style={{ color: "#b8880a", marginLeft: "0.4rem", fontSize: "0.6rem" }}>
+                    (needs {MIN_RESPONDENTS - row.n} more)
+                  </span>
+                )}
+              </td>
+              <td style={{ ...S.td, fontFamily: "'IBM Plex Mono', monospace" }}>
+                {row.stress != null ? row.stress.toFixed(3) : "—"}
+              </td>
+              <td style={{ ...S.td, color: q.color, fontWeight: 500 }}>{q.text}</td>
+              <td style={{ ...S.td, color: "#aaa", fontSize: "0.62rem" }}>
+                {row.computed_at
+                  ? new Date(row.computed_at).toLocaleString("en-US", {
+                      month: "short", day: "numeric",
+                      hour: "2-digit", minute: "2-digit",
+                    })
+                  : "—"}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
 // ── Main admin page ───────────────────────────────────────────────────────────
 
 export default function Admin() {
-  const [token,         setToken]         = useState("");
-  const [authed,        setAuthed]        = useState(false);
-  const [authError,     setAuthError]     = useState(null);
-  const [verifying,     setVerifying]     = useState(false);
+  const [token,           setToken]           = useState("");
+  const [authed,          setAuthed]          = useState(false);
+  const [authError,       setAuthError]       = useState(null);
+  const [verifying,       setVerifying]       = useState(false);
   const [respondentCount, setRespondentCount] = useState(null);
+
+  // Dashboard data loaded after auth
+  const [sessions,    setSessions]    = useState(null);  // array from exportSessionsData
+  const [dashLoading, setDashLoading] = useState(false);
+  const [dashError,   setDashError]   = useState(null);
 
   const handleVerify = async () => {
     setVerifying(true);
     setAuthError(null);
     try {
-      // Cheapest possible auth check: fetch pair_coverage with the token.
-      // If the DB throws "Unauthorized" we know the token is wrong.
       await exportPairCoverage(token);
-      // Also grab respondent count for the stats display
       const n = await fetchRespondentCount();
       setRespondentCount(n);
       setAuthed(true);
@@ -239,22 +504,49 @@ export default function Admin() {
     }
   };
 
+  // Load session data for demographics/activity once authed
+  useEffect(() => {
+    if (!authed || sessions !== null) return;
+    setDashLoading(true);
+    setDashError(null);
+    exportSessionsData(token)
+      .then(setSessions)
+      .catch(err => setDashError(err.message))
+      .finally(() => setDashLoading(false));
+  }, [authed, token, sessions]);
+
+  // ── Derived dashboard analytics ──────────────────────────────────────────
+  const completedSessions = (sessions || []).filter(s => s.completed_at);
+  const totalSessions     = completedSessions.length;
+  const todayCount        = sessionsInDays(completedSessions, 1);
+  const weekCount         = sessionsInDays(completedSessions, 7);
+
+  // Demographic breakdowns from completed sessions
+  const political  = countBy(completedSessions, "political");
+  const religion   = countBy(completedSessions, "religion");
+  const ageRange   = countBy(completedSessions, "age_range");
+  const gender     = countBy(completedSessions, "gender");
+  const education  = countBy(completedSessions, "education");
+  const country    = countBy(completedSessions, "country");
+
+  // Recent 10 sessions
+  const recentSessions = [...completedSessions]
+    .sort((a, b) => (b.completed_at > a.completed_at ? 1 : -1))
+    .slice(0, 10);
+
   const today    = new Date().toISOString().slice(0, 10);
   const filename = (label) => `mindspace_${label}_${today}.csv`;
 
   return (
     <div style={S.page}>
       <span style={S.label}>Project owner</span>
-      <h2 style={S.h2}>Data export</h2>
+      <h2 style={S.h2}>Admin dashboard</h2>
 
       {!authed ? (
         <>
           <p style={S.p}>
-            Enter your admin token to access the data. This is the token you
-            set in the Supabase settings table when running{" "}
-            <code style={{ fontFamily: "monospace", fontSize: "0.75rem" }}>
-              admin_export.sql
-            </code>.
+            Enter your admin token to access the dashboard and data exports.
+            This is the token set in the Supabase settings table.
           </p>
           <div style={S.tokenRow}>
             <input
@@ -277,50 +569,134 @@ export default function Admin() {
         </>
       ) : (
         <>
-          {/* Stats */}
-          {respondentCount !== null && (
-            <div style={S.statRow}>
-              <div style={S.stat}>
-                <span style={S.statValue}>{respondentCount.toLocaleString()}</span>
-                <span style={S.statLabel}>Completed sessions</span>
-              </div>
+          {/* ── Summary stats ─────────────────────────────────────────────── */}
+          <div style={S.section}>
+            <h3 style={S.h3}>Overview</h3>
+            <div style={S.statGrid}>
+              {[
+                { value: respondentCount ?? "…", label: "Completed sessions" },
+                { value: todayCount,              label: "Today" },
+                { value: weekCount,               label: "This week" },
+              ].map(({ value, label }) => (
+                <div key={label} style={S.statTile}>
+                  <span style={S.statValue}>{value}</span>
+                  <span style={S.statLabel}>{label}</span>
+                </div>
+              ))}
             </div>
-          )}
-
-          <p style={S.p}>
-            All three files are CSV — open directly in Excel, Google Sheets,
-            R, or Python. The full dataset is the main file for analysis;
-            session rows and pair coverage are supplementary.
-          </p>
+          </div>
 
           <div style={S.divider} />
 
-          <ExportCard
-            title="Full dataset (responses + demographics)"
-            description="One row per rating. Each row includes the respondent's demographics — the primary file for all statistical analysis."
-            columns="session_id · concept_a · concept_b · rating · rated_at · political · religion · age_range · gender · country · education · completed_at"
-            filename={filename("full")}
-            fetcher={exportFullData}
-            token={token}
-          />
+          {/* ── Group map status ───────────────────────────────────────────── */}
+          <div style={S.section}>
+            <h3 style={S.h3}>Group map status</h3>
+            <p style={{ ...S.p, fontSize: "0.7rem", marginBottom: "1rem" }}>
+              Stress is Kruskal's stress-1 for n=61 concepts in 2D. Calibrated
+              thresholds: Excellent &lt;0.45, Good &lt;0.55, Fair &lt;0.65, Poor ≥0.65.
+              Maps are recomputed hourly once a group reaches {MIN_RESPONDENTS} respondents.
+            </p>
+            <div style={{
+              background: "#ffffff",
+              border: "1px solid #e0dbd3",
+              borderRadius: "6px",
+              overflow: "hidden",
+            }}>
+              <GroupStatusTable token={token} />
+            </div>
+          </div>
 
-          <ExportCard
-            title="Sessions (one row per respondent)"
-            description="Demographic breakdown by respondent. Useful for checking sample composition."
-            columns="session_id · political · religion · age_range · gender · country · education · created_at · completed_at · n_responses"
-            filename={filename("sessions")}
-            fetcher={exportSessionsData}
-            token={token}
-          />
+          <div style={S.divider} />
 
-          <ExportCard
-            title="Pair coverage (aggregate ratings)"
-            description="Mean rating and response count per concept pair, aggregated across all respondents. Anonymised — safe to share publicly."
-            columns="concept_a · concept_b · n_ratings · mean_rating · std_rating"
-            filename={filename("pair_coverage")}
-            fetcher={exportPairCoverage}
-            token={token}
-          />
+          {/* ── Demographics ───────────────────────────────────────────────── */}
+          <div style={S.section}>
+            <h3 style={S.h3}>Demographics</h3>
+            {dashLoading && <div style={S.loadingText}>Loading respondent data…</div>}
+            {dashError && <div style={S.error}>{dashError}</div>}
+            {sessions && (
+              <div style={S.demoGrid}>
+                <DemoCard title="Political orientation (1=far left, 7=far right)"
+                  data={political.map(d => ({ ...d, label: `${d.label}` }))}
+                  total={totalSessions} />
+                <DemoCard title="Religion" data={religion} total={totalSessions} />
+                <DemoCard title="Age range" data={ageRange} total={totalSessions} />
+                <DemoCard title="Gender" data={gender} total={totalSessions} />
+                <DemoCard title="Education" data={education} total={totalSessions} />
+                <DemoCard title="Country (top 8)" data={country} total={totalSessions} />
+              </div>
+            )}
+          </div>
+
+          <div style={S.divider} />
+
+          {/* ── Recent activity ────────────────────────────────────────────── */}
+          <div style={S.section}>
+            <h3 style={S.h3}>Recent sessions (last 10)</h3>
+            {sessions && recentSessions.length === 0 && (
+              <p style={{ ...S.p, color: "#aaa" }}>No completed sessions yet.</p>
+            )}
+            {sessions && recentSessions.map((s, i) => (
+              <div key={s.session_id ?? i} style={S.sessionRow}>
+                <span style={S.sessionId}>{(s.session_id ?? "").slice(0, 8)}…</span>
+                <span style={{ color: "#888" }}>
+                  {s.completed_at
+                    ? new Date(s.completed_at).toLocaleString("en-US", {
+                        month: "short", day: "numeric",
+                        hour: "2-digit", minute: "2-digit",
+                      })
+                    : "—"}
+                </span>
+                {s.political   && <span>pol={s.political}</span>}
+                {s.religion    && <span>{s.religion}</span>}
+                {s.gender      && <span>{s.gender}</span>}
+                {s.age_range   && <span>{s.age_range}</span>}
+                {s.country     && <span>{s.country}</span>}
+                {s.n_responses && (
+                  <span style={{ marginLeft: "auto", fontFamily: "'IBM Plex Mono', monospace", color: "#aaa", fontSize: "0.6rem" }}>
+                    {s.n_responses} ratings
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div style={S.divider} />
+
+          {/* ── CSV exports ────────────────────────────────────────────────── */}
+          <div style={S.section}>
+            <h3 style={S.h3}>Data exports</h3>
+            <p style={S.p}>
+              CSV files — open directly in Excel, Google Sheets, R, or Python.
+              The full dataset is the primary file for analysis.
+            </p>
+
+            <ExportCard
+              title="Full dataset (responses + demographics)"
+              description="One row per rating. Each row includes the respondent's demographics — the primary file for all statistical analysis."
+              columns="session_id · concept_a · concept_b · rating · rated_at · political · religion · age_range · gender · country · education · completed_at"
+              filename={filename("full")}
+              fetcher={exportFullData}
+              token={token}
+            />
+
+            <ExportCard
+              title="Sessions (one row per respondent)"
+              description="Demographic breakdown by respondent. Useful for checking sample composition."
+              columns="session_id · political · religion · age_range · gender · country · education · created_at · completed_at · n_responses"
+              filename={filename("sessions")}
+              fetcher={exportSessionsData}
+              token={token}
+            />
+
+            <ExportCard
+              title="Pair coverage (aggregate ratings)"
+              description="Mean rating and response count per concept pair, aggregated across all respondents. Anonymised — safe to share publicly."
+              columns="concept_a · concept_b · n_ratings · mean_rating · std_rating"
+              filename={filename("pair_coverage")}
+              fetcher={exportPairCoverage}
+              token={token}
+            />
+          </div>
 
           <div style={S.divider} />
           <p style={{ ...S.p, fontSize: "0.65rem", color: "#aaa" }}>
