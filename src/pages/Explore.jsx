@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { CONCEPTS, GROUPS } from "../lib/concepts";
 import { MDS_THRESHOLD } from "../lib/constants";
 import { fetchGroupPositions, fetchRealGroupCounts, fetchSessionResponses, MIN_RESPONDENTS } from "../lib/supabase";
-import { SAMPLE_POSITIONS } from "../lib/samplePositions";
+import { SAMPLE_POSITIONS_BY_GROUP } from "../lib/samplePositions";
 import MDSPlot from "../components/MDSPlot";
 import ForceGraph from "../components/ForceGraph";
 import ConceptModal from "../components/ConceptModal";
@@ -270,10 +270,11 @@ export default function Explore() {
   // nResponses comes from the real sessions table — null means the count
   // hasn't loaded yet; 0 or below MIN_RESPONDENTS means no real data.
   const hasRealData      = nResponses !== null && nResponses >= MIN_RESPONDENTS;
-  // Only the "all" group has a placeholder map; other groups just show a
-  // "not enough data" message until real responses arrive.
-  const showSample       = !hasRealData && selectedGroupId === "all";
-  const displayPositions = hasRealData ? positions : (showSample ? SAMPLE_POSITIONS : null);
+  // Show a placeholder map for any group that has sample data defined and
+  // hasn't yet reached the real-data threshold.
+  const samplePositions  = SAMPLE_POSITIONS_BY_GROUP[selectedGroupId] ?? null;
+  const showSample       = !hasRealData && samplePositions !== null;
+  const displayPositions = hasRealData ? positions : (showSample ? samplePositions : null);
 
   const myConceptCount = myResponses
     ? new Set(myResponses.flatMap(r => [r.concept_a, r.concept_b])).size
@@ -398,7 +399,7 @@ export default function Explore() {
             </div>
           ) : !hasRealData && !showSample ? (
             <div style={S.warning}>
-              Not enough data yet for this group (minimum {MIN_RESPONDENTS} respondents required
+              No map available for this group yet (minimum {MIN_RESPONDENTS} respondents required
               {nResponses !== null ? `, currently ${nResponses}` : ""}). Take the survey to contribute.
             </div>
           ) : (
@@ -407,9 +408,11 @@ export default function Explore() {
                 <div style={S.simulatedBanner}>
                   <span style={{ fontSize: "0.8rem", flexShrink: 0, marginTop: "0.05rem" }}>⚠</span>
                   <span>
-                    <strong style={{ letterSpacing: "0.06em" }}>Placeholder data — not from real respondents.</strong>
-                    {" "}This map was generated from a theoretical model to demonstrate what domain-level clustering
-                    might look like. It will be automatically replaced once {MIN_RESPONDENTS} people have completed the survey.
+                    <strong style={{ letterSpacing: "0.06em" }}>Placeholder map — computer-generated, not from real respondents.</strong>
+                    {" "}This layout was produced from a theoretically motivated model based on prior research,
+                    not from actual survey data. It illustrates what this group's clustering{" "}
+                    <em>might</em> look like — the real map may differ substantially.
+                    It will be replaced automatically once {MIN_RESPONDENTS} people from this group complete the survey.
                     {nResponses !== null && nResponses > 0 && (
                       <span style={{ display: "inline-block", marginLeft: "0.4rem", fontStyle: "italic" }}>
                         ({nResponses} of {MIN_RESPONDENTS} needed so far.)
@@ -474,7 +477,7 @@ export default function Explore() {
             </span>
             {showSample && (
               <span style={{ ...S.metaItem, color: "#b8880a" }}>
-                Source: <span style={{ color: "#b8880a", fontStyle: "italic" }}>placeholder (simulated)</span>
+                Source: <span style={{ color: "#b8880a", fontStyle: "italic" }}>placeholder — computer-generated</span>
               </span>
             )}
           </>
@@ -501,7 +504,7 @@ export default function Explore() {
           {hasRealData
             ? "Maps are recomputed hourly from all submitted responses. Position is determined by classical MDS on the group's aggregate distance matrix. Axes have no inherent meaning — only relative distances matter."
             : showSample
-            ? "The map above is a placeholder generated from theoretically motivated distances. It illustrates how domain-level clustering should look once real data arrives — but the specific positions are not empirically grounded. Real maps are computed hourly once a group reaches the minimum respondent threshold."
+            ? "The map above is computer-generated from theoretically motivated distances, based on prior psychometric and political-psychology research. It is not derived from real survey responses and may differ substantially from what the data will eventually show. Real maps are computed hourly once a group reaches the minimum respondent threshold."
             : "Real maps are computed hourly once a group reaches the minimum respondent threshold. Take the survey to help your groups reach that threshold sooner."}
         </div>
       )}
