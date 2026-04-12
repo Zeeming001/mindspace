@@ -68,22 +68,132 @@ export const CONTINUED_BATCH_SIZE = 20; // pairs per subsequent batch
 export const TOTAL_PAIRS = CONCEPTS.length * (CONCEPTS.length - 1) / 2;
 
 /**
- * Returns ALL 1,953 pairs in a deterministic random order unique to this
- * session index. Each session gets a different shuffle so that across many
- * sessions the full pair space is covered uniformly.
+ * Three curated opening batches (20 pairs each = 60 total).
+ *
+ * Goals:
+ *   1. Cover all 61 concepts within the pre-MDS window
+ *   2. Lead with canonically discriminating cross-domain pairs so the
+ *      first checkpoint already has structural signal worth reflecting on
+ *   3. Build local neighbourhoods — pairs within each batch reinforce each
+ *      other so the similarity spectra are immediately legible
+ *
+ * These are always shown first, before random pair rotation begins.
+ * Within each batch the order is shuffled by session index, so no
+ * individual pair is always "first" across all respondents.
+ */
+export const CURATED_BATCHES = [
+  // ── Batch 1 — core discriminating pairs ─────────────────────────────────
+  [
+    ["Atheist", "Rational"],
+    ["Devout", "Reverent"],
+    ["Just", "Merciful"],
+    ["Patriotic", "Traditionalist"],
+    ["Values personal liberty", "Egalitarian"],
+    ["Kind", "Caring"],
+    ["Intellectual", "Scientific"],
+    ["Pro-choice", "Emphasizes bodily sovereignty"],
+    ["Hardworking", "Ambitious"],
+    ["Believes in the death penalty", "Emphasizes punitive justice"],
+    ["Emphasizes rehabilitative justice", "Emphasizes reconciliation"],
+    ["Family-oriented", "Pro-marriage"],
+    ["LGBTQ+ affirming", "Supports multiculturalism"],
+    ["Supports a welfare state", "Cares about promoting economic equality in society"],
+    ["Supports a free-market economy", "Believes in meritocracy"],
+    ["Loyal", "Deferential to authority"],
+    ["Honest", "Principled"],
+    ["Spiritual", "Mystical"],
+    ["Intellectual", "Amused by irony"],
+    ["Pro-police", "Values security"],
+  ],
+  // ── Batch 2 — cross-domain bridges ──────────────────────────────────────
+  [
+    ["Atheist", "Devout"],
+    ["Rational", "Scientific"],
+    ["Just", "Principled"],
+    ["Patriotic", "Loyal"],
+    ["Egalitarian", "Pro-choice"],
+    ["Kind", "Merciful"],
+    ["Traditionalist", "Family-oriented"],
+    ["Devout", "Emphasizes moral purity"],
+    ["Values security", "Seeks order"],
+    ["Pro-police", "Tough on crime"],
+    ["Believes in meritocracy", "Hardworking"],
+    ["Driven by the desire for truth", "Scientific"],
+    ["Humble", "Kind"],
+    ["Emphasizes consent", "Pro-choice"],
+    ["Democratic", "Egalitarian"],
+    ["Believes in grace", "Spiritual"],
+    ["Driven by the desire for meaning", "Spiritual"],
+    ["Driven by the desire for power", "Ambitious"],
+    ["Tolerates inequality in society", "Supports a free-market economy"],
+    ["Pro-religious liberty", "Family-oriented"],
+  ],
+  // ── Batch 3 — interesting contrasts + full concept coverage ─────────────
+  [
+    ["Atheist", "Scientific"],
+    ["Devout", "Believes in grace"],
+    ["Merciful", "Caring"],
+    ["Patriotic", "Pro-police"],
+    ["Egalitarian", "Cares about promoting economic equality in society"],
+    ["Traditionalist", "Seeks order"],
+    ["Family-oriented", "Sexually liberated"],
+    ["Pro-religious liberty", "Pro-marriage"],
+    ["Emphasizes human interdependence", "Caring"],
+    ["Emphasizes rehabilitative justice", "Caring"],
+    ["Emphasizes punitive justice", "Just"],
+    ["Tolerates government surveillance", "Values security"],
+    ["Emphasizes free speech", "Values personal liberty"],
+    ["Supports a welfare state", "Egalitarian"],
+    ["Believes in luck", "Humble"],
+    ["Driven by the desire for beauty", "Driven by the desire for meaning"],
+    ["Practical", "Hardworking"],
+    ["Intuitive", "Spiritual"],
+    ["Deeply concerned with personal guilt", "Believes in grace"],
+    ["Driven by the desire for personal authenticity", "Honest"],
+  ],
+];
+
+/**
+ * Returns ALL 1,953 pairs in a session-specific order.
+ *
+ * The first 60 pairs are always the three curated batches (batch order is
+ * fixed; pair order within each batch is shuffled by session index).
+ * The remaining 1,893 pairs are a random shuffle of the non-curated pairs,
+ * also seeded by session index.
+ *
+ * This means every respondent's first three batches cover the same
+ * diagnostic pairs, producing comparable and immediately meaningful
+ * concept maps at the very first checkpoint.
  */
 export function getAllPairsForSession(sessionIndex) {
-  const all = getAllPairs();
-  const rng = mulberry32(sessionIndex * 2654435761 + 1);
+  // 1. Shuffle within each curated batch (different order per session)
+  const curatedShuffled = CURATED_BATCHES.map((batch, batchIdx) => {
+    const batchRng = mulberry32(sessionIndex * 1234567 + batchIdx * 7654321 + 1);
+    const shuffled = [...batch];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(batchRng() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  });
+  const curatedFlat = curatedShuffled.flat();
 
-  // Fisher-Yates shuffle
-  const shuffled = [...all];
-  for (let i = shuffled.length - 1; i > 0; i--) {
+  // 2. Build a set of curated pair keys (order-independent) for deduplication
+  const curatedKeys = new Set(
+    curatedFlat.map(([a, b]) => [a, b].sort().join("|||"))
+  );
+
+  // 3. Shuffle remaining pairs uniquely per session
+  const remaining = getAllPairs().filter(
+    ([a, b]) => !curatedKeys.has([a, b].sort().join("|||"))
+  );
+  const rng = mulberry32(sessionIndex * 2654435761 + 1);
+  for (let i = remaining.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    [remaining[i], remaining[j]] = [remaining[j], remaining[i]];
   }
 
-  return shuffled;
+  return [...curatedFlat, ...remaining];
 }
 
 // Groups available for stratified explore view.

@@ -23,8 +23,8 @@ import { LS_SESSION_KEY, LS_COMPLETED_KEY } from "../lib/session";
 import { MDS_THRESHOLD } from "../lib/constants";
 import { btnPrimary, btnSecondary } from "../styles/buttons";
 import { useContainerWidth } from "../lib/hooks";
-import ForceGraph from "../components/ForceGraph";
 import MDSPlot from "../components/MDSPlot";
+import SparseInsightView from "../components/SparseInsightView";
 import ErrorBoundary from "../components/ErrorBoundary";
 
 // ─── Phases ──────────────────────────────────────────────────────────────────
@@ -562,22 +562,21 @@ function Checkpoint({ ratings, totalPairs, sessionId, onContinue, onDone }) {
   const navigate = useNavigate();
   const hasMore = ratings.length < totalPairs;
   const [copied, setCopied] = useState(false);
-  const [graphContainerRef, graphWidth] = useContainerWidth(660);
+  const [graphContainerRef, graphWidth] = useContainerWidth(700);
 
-  const sorted = [...ratings].sort((a, b) => b.val - a.val);
-  const mostSimilar   = sorted.slice(0, 5);
-  const mostDifferent = sorted.slice(-5).reverse();
+  // Convert in-memory ratings to the DB response format used by visualisations
+  const responses = useMemo(
+    () => ratings.map(({ pair, val }) => ({ concept_a: pair[0], concept_b: pair[1], rating: val })),
+    [ratings]
+  );
 
-  const responses = ratings.map(({ pair, val }) => ({
-    concept_a: pair[0], concept_b: pair[1], rating: val,
-  }));
-  const conceptsInSession = [...new Set(ratings.flatMap(r => r.pair))];
+  const conceptsInSession = useMemo(
+    () => [...new Set(ratings.flatMap(r => r.pair))],
+    [ratings]
+  );
 
-  // Use MDS once the user has rated enough pairs for a meaningful spatial layout.
   const useMDS = ratings.length >= MDS_THRESHOLD;
   const ratedConcepts = CONCEPTS.filter(c => conceptsInSession.includes(c));
-
-  const pairsColumns = graphWidth < 500 ? "1fr" : "1fr 1fr";
 
   const shareUrl = `${window.location.origin}/results?s=${sessionId}`;
   const handleCopyLink = () => {
@@ -594,11 +593,11 @@ function Checkpoint({ ratings, totalPairs, sessionId, onContinue, onDone }) {
       </span>
       <h2 style={S.h2}>Your concept map so far</h2>
 
-      {/* Stats — positive framing, no discouraging "remaining" count */}
+      {/* Stats */}
       <div style={S.statRow}>
         {[
-          { value: ratings.length,            label: "Pairs rated" },
-          { value: conceptsInSession.length,  label: "Concepts seen" },
+          { value: ratings.length,           label: "Pairs rated" },
+          { value: conceptsInSession.length, label: "Concepts seen" },
           { value: `${Math.round((ratings.length / TOTAL_PAIRS) * 100)}%`, label: "Matrix coverage" },
         ].map(({ value, label }) => (
           <div key={label} style={S.stat}>
@@ -608,8 +607,8 @@ function Checkpoint({ ratings, totalPairs, sessionId, onContinue, onDone }) {
         ))}
       </div>
 
-      {/* Personal concept map */}
-      {conceptsInSession.length >= 5 && (
+      {/* MDS spatial map (shown once ≥ MDS_THRESHOLD pairs) */}
+      {useMDS && conceptsInSession.length >= 5 && (
         <div
           ref={graphContainerRef}
           style={{
@@ -621,62 +620,33 @@ function Checkpoint({ ratings, totalPairs, sessionId, onContinue, onDone }) {
           }}
         >
           <ErrorBoundary label="concept map">
-            {useMDS ? (
-              <MDSPlot
-                responses={responses}
-                concepts={ratedConcepts}
-                width={Math.max(graphWidth - 32, 280)}
-                height={Math.round(Math.max(graphWidth - 32, 280) * 0.75)}
-                showLegend={true}
-                defaultShowLabels={true}
-                label={`Your concept map — ${conceptsInSession.length} concepts`}
-              />
-            ) : (
-              <ForceGraph
-                responses={responses}
-                width={Math.max(graphWidth - 32, 280)}
-                height={Math.round(Math.max(graphWidth - 32, 280) * 0.62)}
-                showLegend={true}
-                defaultShowLabels={true}
-                label={`Your concept network — ${conceptsInSession.length} concepts`}
-              />
-            )}
+            <MDSPlot
+              responses={responses}
+              concepts={ratedConcepts}
+              width={Math.max(graphWidth - 32, 280)}
+              height={Math.round(Math.max(graphWidth - 32, 280) * 0.75)}
+              showLegend={true}
+              defaultShowLabels={true}
+              label={`Your concept map — ${conceptsInSession.length} concepts`}
+            />
           </ErrorBoundary>
         </div>
       )}
 
-      {/* Top similar / different pairs */}
-      {ratings.length >= 5 && (
-        <div style={{ display: "grid", gridTemplateColumns: pairsColumns, gap: "1.5rem", marginBottom: "2rem" }}>
-          <div>
-            <div style={{ fontSize: "0.58rem", letterSpacing: "0.15em", color: "#a8d4a0", textTransform: "uppercase", marginBottom: "0.6rem" }}>
-              Your closest pairs
-            </div>
-            {mostSimilar.map(({ pair, val }, i) => (
-              <div key={i} style={S.insightRow}>
-                <span style={S.insightConcepts}>{pair[0]} · {pair[1]}</span>
-                <span style={S.insightRating(val)}>{val}/5</span>
-              </div>
-            ))}
-          </div>
-          <div>
-            <div style={{ fontSize: "0.58rem", letterSpacing: "0.15em", color: "#d47e7e", textTransform: "uppercase", marginBottom: "0.6rem" }}>
-              Your most distant pairs
-            </div>
-            {mostDifferent.map(({ pair, val }, i) => (
-              <div key={i} style={S.insightRow}>
-                <span style={S.insightConcepts}>{pair[0]} · {pair[1]}</span>
-                <span style={S.insightRating(val)}>{val}/5</span>
-              </div>
-            ))}
-          </div>
-        </div>
+      {/* Pair cards + similarity spectra (always shown) */}
+      {ratings.length >= 1 && (
+        <SparseInsightView
+          responses={responses}
+          narrow={graphWidth < 480}
+        />
       )}
 
-      <p style={{ ...S.p, color: "#666", fontSize: "0.72rem" }}>
+      <p style={{ ...S.p, color: "#666", fontSize: "0.72rem", marginTop: "1.5rem" }}>
         Your responses have been saved anonymously.
         {hasMore
-          ? " Rate more pairs to fill in your map — each batch of 20 adds new concepts and refines the layout."
+          ? useMDS
+            ? " The spatial map above updates with each new batch — keep rating to see clusters sharpen."
+            : ` Rate ${MDS_THRESHOLD - ratings.length} more pairs to unlock your full spatial concept map.`
           : " You've rated all available pairs. Thank you for your thoroughness."}
       </p>
 

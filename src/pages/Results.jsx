@@ -15,8 +15,8 @@ import { LS_SESSION_KEY } from "../lib/session";
 import { MDS_THRESHOLD } from "../lib/constants";
 import { btnPrimary, btnSecondary } from "../styles/buttons";
 import { useContainerWidth } from "../lib/hooks";
-import ForceGraph from "../components/ForceGraph";
 import MDSPlot from "../components/MDSPlot";
+import SparseInsightView from "../components/SparseInsightView";
 import ErrorBoundary from "../components/ErrorBoundary";
 import ConceptModal from "../components/ConceptModal";
 
@@ -236,16 +236,17 @@ export default function Results() {
           </div>
         )}
 
-        {/* Concept map — ForceGraph when sparse, MDS once enough data */}
-        {(() => {
-          const useMDS = responses.length >= MDS_THRESHOLD;
+        {/* Width-measuring wrapper — always rendered so graphWidth stays current */}
+        <div ref={graphContainerRef} style={{ width: "100%" }} />
+
+        {/* MDS spatial map — shown once ≥ MDS_THRESHOLD pairs rated */}
+        {responses.length >= MDS_THRESHOLD && (() => {
           const ratedConcepts = CONCEPTS.filter(c =>
             responses.some(r => r.concept_a === c || r.concept_b === c)
           );
           const w = Math.max(graphWidth - 32, 280);
           return (
             <div
-              ref={graphContainerRef}
               style={{
                 background: "rgba(0,0,0,0.02)",
                 border: "1px solid #e0dbd3",
@@ -255,37 +256,31 @@ export default function Results() {
               }}
             >
               <ErrorBoundary label="concept map">
-                {useMDS ? (
-                  <MDSPlot
-                    responses={responses}
-                    concepts={ratedConcepts}
-                    width={w}
-                    height={Math.round(w * 0.75)}
-                    showLegend={true}
-                    defaultShowLabels={true}
-                    onConceptClick={setSelectedConcept}
-                    selectedConcept={selectedConcept}
-                  />
-                ) : (
-                  <ForceGraph
-                    responses={responses}
-                    width={w}
-                    height={Math.round(w * 0.62)}
-                    showLegend={true}
-                    defaultShowLabels={true}
-                    onConceptClick={setSelectedConcept}
-                    selectedConcept={selectedConcept}
-                  />
-                )}
+                <MDSPlot
+                  responses={responses}
+                  concepts={ratedConcepts}
+                  width={w}
+                  height={Math.round(w * 0.75)}
+                  showLegend={true}
+                  defaultShowLabels={true}
+                  onConceptClick={setSelectedConcept}
+                  selectedConcept={selectedConcept}
+                />
               </ErrorBoundary>
             </div>
           );
         })()}
 
-        <p style={{ fontSize: "0.72rem", color: "#666", lineHeight: 1.8, marginBottom: "0.5rem" }}>
+        {/* Pair cards + similarity spectra — always shown */}
+        <SparseInsightView
+          responses={responses}
+          narrow={graphWidth < 480}
+        />
+
+        <p style={{ fontSize: "0.72rem", color: "#666", lineHeight: 1.8, marginTop: "1rem", marginBottom: "0.5rem" }}>
           {responses.length >= MDS_THRESHOLD
-            ? "Each dot is a concept you rated. Spatial distance reflects how closely your mind associates them."
-            : "Each node is a concept you rated. Edges connect rated pairs — thicker and darker means your mind placed them closer together."}
+            ? "The spatial map shows all concepts you've rated — distance reflects psychological closeness."
+            : `Rate ${MDS_THRESHOLD - responses.length} more pairs to unlock the full spatial concept map.`}
           {isOwnSession && " Share the link above so others can see your map."}
         </p>
 

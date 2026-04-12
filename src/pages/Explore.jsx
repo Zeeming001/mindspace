@@ -5,7 +5,7 @@ import { MDS_THRESHOLD } from "../lib/constants";
 import { fetchGroupPositions, fetchRealGroupCounts, fetchSessionResponses, MIN_RESPONDENTS } from "../lib/supabase";
 import { SAMPLE_POSITIONS_BY_GROUP } from "../lib/samplePositions";
 import MDSPlot from "../components/MDSPlot";
-import ForceGraph from "../components/ForceGraph";
+import SparseInsightView from "../components/SparseInsightView";
 import ConceptModal from "../components/ConceptModal";
 import ErrorBoundary from "../components/ErrorBoundary";
 import { LS_SESSION_KEY } from "../lib/session";
@@ -363,30 +363,30 @@ export default function Explore() {
             );
             const w = Math.max(plotWidth - 48, 280);
             return (
-              <ErrorBoundary label="personal map">
-                {useMDS ? (
-                  <MDSPlot
-                    responses={myResponses}
-                    concepts={ratedConcepts}
-                    width={w}
-                    height={Math.round(w * 0.75)}
-                    showLegend={true}
-                    defaultShowLabels={true}
-                    onConceptClick={setSelectedConcept}
-                    selectedConcept={selectedConcept}
-                  />
-                ) : (
-                  <ForceGraph
-                    responses={myResponses}
-                    width={w}
-                    height={Math.round(w * 0.74)}
-                    showLegend={true}
-                    defaultShowLabels={true}
-                    onConceptClick={setSelectedConcept}
-                    selectedConcept={selectedConcept}
-                  />
+              <div>
+                {/* MDS spatial map once ≥ threshold */}
+                {useMDS && (
+                  <ErrorBoundary label="personal map">
+                    <MDSPlot
+                      responses={myResponses}
+                      concepts={ratedConcepts}
+                      width={w}
+                      height={Math.round(w * 0.75)}
+                      showLegend={true}
+                      defaultShowLabels={true}
+                      onConceptClick={setSelectedConcept}
+                      selectedConcept={selectedConcept}
+                    />
+                  </ErrorBoundary>
                 )}
-              </ErrorBoundary>
+                {/* Pair cards + spectra — always shown for personal map */}
+                <div style={{ marginTop: useMDS ? "1.5rem" : "0" }}>
+                  <SparseInsightView
+                    responses={myResponses}
+                    narrow={plotWidth < 480}
+                  />
+                </div>
+              </div>
             );
           })()
 
@@ -496,8 +496,8 @@ export default function Explore() {
       {selectedGroupId === "mine" ? (
         <div style={S.callout}>
           {myResponses && myResponses.length >= MDS_THRESHOLD
-            ? "Your map uses classical MDS — spatial distance directly reflects how similar you rated each pair of concepts. The layout is computed from your personal distance matrix, with unrated pairs treated as neutral."
-            : "Your network shows only the pairs you've rated — no averages or imputation. Concepts you rated as highly similar are pulled close together; dissimilar pairs are pushed apart. Rate 60+ pairs to unlock the full MDS spatial map."}
+            ? "Your map uses classical MDS — spatial distance directly reflects how similar you rated each pair of concepts. The cards and spectra below the map show your strongest associations."
+            : `The cards and spectra above show your closest and most distant pairs, plus how you position concepts relative to each other. Rate ${MDS_THRESHOLD}+ pairs total to unlock the full spatial MDS map.`}
         </div>
       ) : (
         <div style={S.callout}>
