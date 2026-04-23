@@ -21,7 +21,7 @@ export const CONCEPT_DESCRIPTIONS = {
 
   "Intellectual": {
     evokes: "A person who finds deep satisfaction in abstract reasoning, theory, and the life of the mind — someone for whom ideas are intrinsically valuable, apart from their practical use.",
-    variation: "This concept tends to be viewed positively across groups, but its neighbours on the map may differ. For some respondents it might cluster with \"Rational\" and \"Scientific\"; for others it could carry faint associations with detached elitism. Politically polarized samples may show it sitting noticeably closer to one end of the spectrum than the other.",
+    variation: "For some respondents, this construct might cluster with \"Rational\" and \"Scientific\"; for others it could carry faint associations with detached elitism. Politically polarized samples may show it sitting noticeably closer to one end of the spectrum than the other.",
   },
 
   "Rational": {
@@ -46,19 +46,19 @@ export const CONCEPT_DESCRIPTIONS = {
 
   "Practical": {
     evokes: "Hands-on problem solving, common sense, and an orientation toward what works rather than what's theoretically elegant.",
-    variation: "This concept tends to be viewed positively across groups. Conservative respondents might place it closer to \"Hardworking\" and \"Loyal.\" Some liberal respondents may see it in mild tension with visionary or idealistic thinking. Its distance from \"Intellectual\" could vary interestingly between groups.",
+    variation: "Conservative respondents might place this concept closer to \"Hardworking\" and \"Loyal.\" Some liberal respondents may see it in mild tension with visionary or idealistic thinking. Its distance from \"Intellectual\" could vary interestingly between groups.",
   },
 
   // ── Religion & Worldview ─────────────────────────────────────────────────
 
   "Devout": {
     evokes: "Deep, practiced religious commitment — regular prayer, community participation, adherence to doctrine, and organizing one's life around faith.",
-    variation: "For religious respondents, this concept might cluster tightly with \"Reverent,\" \"Believes in grace,\" and \"Spiritual.\" For secular respondents it may sit nearer to \"Traditionalist\" or \"Deferential to authority.\" Its proximity to \"Atheist\" is one of the map's most theoretically interesting potential patterns: some respondents of both types may see them as sharing a certain epistemic intensity.",
+    variation: "For religious respondents, this concept might cluster tightly with \"Reverent,\" \"Believes in grace,\" and \"Spiritual.\" For secular respondents it may sit nearer to \"Traditionalist\" or \"Deferential to authority.\" Its proximity to \"Atheist\" could be one of the map's most theoretically interesting potential patterns: some respondents of both types may see them as sharing a certain epistemic intensity.",
   },
 
   "Atheist": {
     evokes: "Explicit rejection of belief in God or gods, typically accompanied by a naturalistic worldview and reliance on science and reason.",
-    variation: "For secular respondents this concept might cluster near \"Rational\" and \"Scientific.\" For religious respondents it may sit far from \"Devout\" and \"Reverent\" — though some respondents could place it near \"Devout\" based on a sense of shared certainty of conviction. Its relationship with \"Amused by irony\" and \"Intellectual\" may be a subtle but potentially informative group-differentiating signal.",
+    variation: "For secular respondents this concept might cluster near \"Rational\" and \"Scientific.\" For religious respondents it may sit far from \"Devout\" and \"Reverent\" — though some respondents could place it near \"Devout\" based on a sense of shared certainty of conviction. Its relationship with \"Amused by irony\" and \"Intellectual\" might be a subtle but potentially informative group-differentiating signal.",
   },
 
   "Spiritual": {
@@ -85,7 +85,7 @@ export const CONCEPT_DESCRIPTIONS = {
 
   "Just": {
     evokes: "A commitment to fairness, proportionality, and right outcomes — giving each person what they deserve according to consistent principles.",
-    variation: "Almost universally positive, but the content of justice may differ sharply between groups. For liberals, \"just\" might sit near \"Egalitarian\" and \"Caring.\" For conservatives it could cluster closer to \"Principled\" and \"Tough on crime.\" The gulf between retributive and distributive conceptions of justice is one of the deepest potential moral divides in this dataset.",
+    variation: "The content of justice may differ sharply between groups. For liberals, \"just\" might sit near \"Egalitarian\" and \"Caring.\" For conservatives it could cluster closer to \"Principled\" and \"Tough on crime.\" The gulf between retributive and distributive conceptions of justice is one of the deepest potential moral divides in this dataset.",
   },
 
   "Merciful": {
@@ -115,7 +115,7 @@ export const CONCEPT_DESCRIPTIONS = {
 
   "Principled": {
     evokes: "Adherence to a consistent moral code regardless of circumstances, social pressure, or personal cost — a person who does the right thing even when it's hard.",
-    variation: "Broadly positive across groups, but potentially for different reasons. For conservatives, principled behavior might mean rule-following and consistency. For liberals, it could suggest moral courage in standing against power or convention. Both groups may value it; where they differ might be in which principles they consider most worth holding to.",
+    variation: "For conservatives, principled behavior might mean rule-following and consistency. For liberals, it could suggest moral courage in standing against power or convention. Both groups may value it; where they differ might be in which principles they consider most worth holding to.",
   },
 
   // ── Politics & Governance ────────────────────────────────────────────────
@@ -152,7 +152,7 @@ export const CONCEPT_DESCRIPTIONS = {
 
   "Patriotic": {
     evokes: "Love of one's country — pride in national identity, history, and community — and a sense of obligation to serve and protect them.",
-    variation: "For conservative respondents this might cluster near \"Values security,\" \"Traditionalist,\" and \"Loyal.\" Liberal respondents may distinguish between patriotism as love of a country's ideals (which includes the willingness to criticize it) and nationalism as unconditional allegiance. Its proximity to \"Seeks order\" vs. \"Democratic\" could be politically revealing.",
+    variation: "For conservative respondents this might cluster near \"Values security,\" \"Traditionalist,\" and \"Loyal.\" Liberal respondents might distinguish between patriotism as love of a country's ideals (which includes the willingness to criticize it) and nationalism as unconditional allegiance. Its proximity to \"Seeks order\" vs. \"Democratic\" could be politically revealing.",
   },
 
   // ── Society & Culture ────────────────────────────────────────────────────
@@ -174,7 +174,7 @@ export const CONCEPT_DESCRIPTIONS = {
 
   "LGBTQ+ affirming": {
     evokes: "Explicit support for the dignity, rights, legal equality, and affirmed identities of lesbian, gay, bisexual, transgender, and queer people.",
-    variation: "This is likely to be one of the survey's most discriminating concepts. Liberal respondents might cluster it tightly with \"Egalitarian,\" \"Supports multiculturalism,\" and \"Caring.\" Conservative respondents may tend to place it at greater distance from \"Pro-religious liberty,\" \"Traditionalist,\" and \"Family-oriented.\" Group differences on this concept may be among the largest in the dataset.",
+    variation: "Liberal respondents might cluster this construct tightly with \"Egalitarian,\" \"Supports multiculturalism,\" and \"Caring.\" Conservative respondents may tend to place it at greater distance from \"Pro-religious liberty,\" \"Traditionalist,\" and \"Family-oriented.\" Group differences on this concept may be among the largest in the dataset.",
   },
 
   "Pro-religious liberty": {
@@ -213,12 +213,12 @@ export const CONCEPT_DESCRIPTIONS = {
 
   "Pro-police": {
     evokes: "Trust in and support for law enforcement as a force for safety and order — opposition to defunding or substantially restructuring policing.",
-    variation: "This concept may show strong positive valence for conservative respondents, potentially clustering near \"Values security,\" \"Seeks order,\" and \"Patriotic.\" Liberal respondents are more variable, and some may associate it with concerns about systemic racial bias or excessive force. It's likely to be one of the map's clearest political discriminators.",
+    variation: "This concept may show strong positive valence for conservative respondents, potentially clustering near \"Values security,\" \"Seeks order,\" and \"Patriotic.\" Many liberal respondents may associate it with concerns about systemic racial bias or excessive force. It's likely to be one of the map's clearest political discriminators.",
   },
 
   "Emphasizes rehabilitative justice": {
     evokes: "The view that the primary goal of criminal punishment is to reform offenders and help them reintegrate as productive members of society.",
-    variation: "Liberal respondents might cluster this near \"Emphasizes reconciliation,\" \"Merciful,\" and \"Caring.\" Conservative respondents may place it further from \"Tough on crime\" and \"Believes in the death penalty.\" Its relationship to \"Just\" — is rehabilitation truly fair to victims? — is a philosophically contested question across groups.",
+    variation: "Liberal respondents might cluster this near \"Emphasizes reconciliation,\" \"Merciful,\" and \"Caring.\" Conservative respondents may place it further from \"Tough on crime\" and \"Believes in the death penalty.\" Its relationship to \"Just\" — is rehabilitation truly fair to victims? — may be a philosophically contested question across groups.",
   },
 
   "Emphasizes punitive justice": {
@@ -269,7 +269,7 @@ export const CONCEPT_DESCRIPTIONS = {
   },
 
   "Tolerates inequality in society": {
-    evokes: "Acceptance that unequal outcomes are a natural consequence of differences in talent, effort, choices, or luck — and that this is not necessarily unjust.",
+    evokes: "Belief that unequal outcomes are a natural consequence of differences in talent, effort, choices, or luck — and that this is not necessarily unjust.",
     variation: "Conservative respondents might place this near \"Supports a free-market economy\" and \"Believes in meritocracy\" — inequality as the price of freedom and incentive. Liberal respondents may cluster it near concepts they view negatively, far from \"Egalitarian\" and \"Caring.\" Its relationship to \"Believes in luck\" could reveal whether inequality is seen as earned or as arbitrary.",
   },
 
@@ -292,12 +292,12 @@ export const CONCEPT_DESCRIPTIONS = {
 
   "Driven by the desire for power": {
     evokes: "Motivation by dominance, influence, and control — a drive to shape events and other people.",
-    variation: "This concept tends to be viewed negatively across most groups as a character trait, but may be interpreted differently. Some respondents might see it as ambitious leadership; others as corruption or manipulation. Its position relative to \"Ambitious\" and \"Principled\" — can power be sought with integrity? — may vary interestingly between groups.",
+    variation: "While this concept is likely to be viewed negatively across groups as a character trait, it nonetheless may interpreted in different ways. Some respondents might see it as ambitious leadership; others as corruption or manipulation. Its position relative to \"Ambitious\" and \"Principled\" — can power be sought with integrity? — may vary interestingly between groups.",
   },
 
   "Driven by the desire for meaning": {
     evokes: "An orientation toward purposeful existence — the search for narrative coherence and significance in one's life and actions.",
-    variation: "For religious respondents this might sit near \"Spiritual,\" \"Devout,\" and \"Driven by the desire for beauty.\" For secular respondents it could cluster near \"Intellectual\" and \"Driven by the desire for truth.\" The concept is broadly valued, but through different frameworks — meaning as given (religious) vs. meaning as constructed (existentialist).",
+    variation: "For religious respondents this might sit near \"Spiritual,\" \"Devout,\" and \"Driven by the desire for beauty.\" For secular respondents it could cluster near \"Intellectual\" and \"Driven by the desire for truth.\" The concept may be broadly valued, but through different frameworks — meaning as given (religious) vs. meaning as constructed (existentialist).",
   },
 
   "Driven by the desire for personal authenticity": {
@@ -307,38 +307,38 @@ export const CONCEPT_DESCRIPTIONS = {
 
   "Amused by irony": {
     evokes: "A playful, self-aware orientation toward contradictions, absurdities, and the gap between pretension and reality — finding meaning in what doesn't quite cohere.",
-    variation: "Research suggests this may correlate with liberal political orientation and epistemic openness. Conservative respondents may see it as cynicism, detachment, or condescension. Despite appearing minor, this concept tends to be a surprisingly reliable discriminator between groups in existing research. Whether that pattern emerges here remains to be seen.",
+    variation: "This construct may correlate with liberal political orientation and epistemic openness. Conservative respondents may see it as cynicism, detachment, or condescension. Whether that pattern emerges here remains to be seen.",
   },
 
   // ── Identity & Character ─────────────────────────────────────────────────
 
   "Kind": {
     evokes: "Warmth, consideration, and benevolence toward others — the disposition to treat people gently and wish them well.",
-    variation: "Universally positive, but its neighbours may differ. Religious respondents might cluster it near \"Merciful\" and \"Believes in grace.\" Liberal respondents may place it near \"Caring\" and \"Egalitarian.\" Conservative respondents might associate it with \"Humble\" and \"Hardworking.\" These different neighbourhoods could reveal different theories of what kindness is ultimately for.",
+    variation: "While this construct is likely to be viewed positively across groups, its neighbours may differ. Religious respondents might cluster it near \"Merciful\" and \"Believes in grace.\" Liberal respondents may place it near \"Caring\" and \"Egalitarian.\" Conservative respondents might associate it with \"Humble\" and \"Hardworking.\" These different neighbourhoods could reveal different theories of what kindness is ultimately for.",
   },
 
   "Honest": {
     evokes: "Truthfulness, transparency, and integrity in all dealings — a person who tells the truth even when it's inconvenient.",
-    variation: "Among the most universally valued concepts in the survey. Its neighbourhood is revealing: if it clusters near virtue concepts (\"Principled,\" \"Just\") vs. epistemic concepts (\"Rational,\" \"Scientific\"), it suggests a moral vs. an intellectual framing of honesty. Both framings are legitimate; they reflect different theories of what makes honesty important.",
+    variation: "The neighbourhood of this construct may be revealing: if it clusters near virtue concepts (\"Principled,\" \"Just\") vs. epistemic concepts (\"Rational,\" \"Scientific\"), it suggests a moral vs. an intellectual framing of honesty. Both framings are legitimate; they reflect different theories of what makes honesty important.",
   },
 
   "Ambitious": {
     evokes: "Strong desire to succeed, achieve, and advance — a drive toward goals and a refusal to settle for less.",
-    variation: "Positive for most respondents, and might cluster particularly close to \"Hardworking\" and \"Believes in meritocracy\" in conservative samples. Some religious and communitarian respondents may see unchecked ambition as a form of pride, placing it at a greater distance from \"Humble\" and \"Caring.\" Its tension with humility is one of the oldest ethical puzzles.",
+    variation: "Might cluster particularly close to \"Hardworking\" and \"Believes in meritocracy\" in conservative samples. Some religious and communitarian respondents may see unchecked ambition as a form of pride, placing it at a greater distance from \"Humble\" and \"Caring.\" Its tension with humility is one of the oldest ethical puzzles.",
   },
 
   "Humble": {
     evokes: "Modesty, openness to being wrong, and freedom from arrogance — the capacity to hold one's own perspective lightly.",
-    variation: "Valued across groups but potentially for different reasons. Religious respondents might cluster it near \"Devout\" and \"Deferential to authority\" — humility before God. Secular respondents may place it near \"Honest\" and \"Kind\" — epistemic humility and gentleness. Its distance from \"Ambitious\" could be an interesting cross-group signal.",
+    variation: "Religious respondents may cluster this construct near \"Devout\" and \"Deferential to authority\" — humility before God. Secular respondents may place it near \"Honest\" and \"Kind\" — epistemic humility and gentleness. Its distance from \"Ambitious\" could be an interesting cross-group signal.",
   },
 
   "Hardworking": {
     evokes: "Diligence, industriousness, and sustained commitment to one's responsibilities — the work ethic that takes pride in effort.",
-    variation: "Near-universally positive. Conservative respondents might cluster it tightly near \"Believes in meritocracy\" and \"Ambitious\" — hard work as the engine of deserved success. Its proximity to \"Humble\" vs. \"Ambitious\" could reveal whether respondents see work primarily as a form of self-improvement or as the basis for justified reward.",
+    variation: "Conservative respondents may cluster this concept tightly near \"Believes in meritocracy\" and \"Ambitious\" — hard work as the engine of deserved success. Its proximity to \"Humble\" vs. \"Ambitious\" could reveal whether respondents see work primarily as a form of self-improvement or as the basis for justified reward.",
   },
 
   "Believes in luck": {
     evokes: "The view that chance, circumstance, and unearned advantage play a significant role in determining life outcomes — that success is not purely the product of individual effort.",
-    variation: "Liberal respondents might place this in a cluster that functions as a critique of meritocracy — far from \"Believes in meritocracy\" and near \"Tolerates inequality in society\" (with the implicit argument that if luck matters, unequal outcomes are less justifiable). Conservative respondents may tend to place it further from \"Hardworking,\" since acknowledging luck can complicate the case for individual responsibility. This could be a quietly powerful discriminating concept.",
+    variation: "Liberal respondents might place this in a cluster that functions as a critique of meritocracy — far from \"Believes in meritocracy\" and near \"Tolerates inequality in society\" (with the implicit argument that if luck matters, unequal outcomes are less justifiable). Conservative respondents may tend to place it further from \"Hardworking,\" since acknowledging luck can complicate the case for individual responsibility. This could be a quietly powerful differentiating concept.",
   },
 };
